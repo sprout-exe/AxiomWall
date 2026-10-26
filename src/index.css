@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+@theme {
+  --color-canvas: #E9EAEE;
+  --color-ink: #101114;
+  --color-lime: #C8F03C;
+  --color-twin: #A78BFA;
+  --color-allow: #22C55E;
+  --color-warn: #F59E0B;
+  --color-limit: #F97316;
+  --color-block: #EF4444;
+}
+
+body {
+  background: var(--color-canvas);
+  font-family: Inter, sans-serif;
+  margin: 0;
+}

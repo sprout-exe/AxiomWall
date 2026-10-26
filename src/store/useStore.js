@@ -7,6 +7,7 @@ import { createTelemetry } from '../sim/telemetry.js'
 import { stepTwin } from '../engine/twin.js'
 import { evaluate } from '../engine/index.js'
 import { resetRisk } from '../engine/risk.js'
+import { connectWokwi, DEFAULT_TOPIC } from '../sim/wokwiLink.js'
 
 const MAX_HISTORY = 120;
 
@@ -14,6 +15,8 @@ let telemetry = null;
 let _attackTransform = null;
 let _command = null;
 let _telemetryOverride = null;
+let wokwi = null;      // live link to the Wokwi ESP32 (when source === 'wokwi')
+let _lastWokwiT = null; // last ESP32 time stamp, to detect an ESP32 reset
 
 const useStore = create((set, get) => ({
   // ── State ───────────────────────────────────────────────────────
@@ -26,6 +29,12 @@ const useStore = create((set, get) => ({
   command:         null,
   stress:          0,       // Cell stress 0–100 (model estimate)
   injectedSignals: [],      // array of signal keys currently injected e.g. ['T']
+
+  // ── Wokwi hardware-in-the-loop ──────────────────────────────────
+  source:      'sim',               // 'sim' = built-in simulator, 'wokwi' = live ESP32
+  wokwiStatus: 'off',               // 'off' | 'connecting' | 'waiting' | 'live' | 'error'
+  wokwiTopic:  DEFAULT_TOPIC,
+  wokwiGuard:  null,                // the ESP32's own on-board verdict (display only)
 
   // ── Actions ─────────────────────────────────────────────────────
 
@@ -77,8 +86,46 @@ const useStore = create((set, get) => ({
     });
   },
 
+  // A sample arriving from the Wokwi ESP32.
+  _onWokwiSample(sample, command) {
+    // (Re)calibrate the twin on the first sample and whenever the ESP32 restarts
+    // (its clock goes backwards). The twin then evolves from reported current only.
+    if (_lastWokwiT === null || sample.t < _lastWokwiT) {
+      resetRisk();
+      set({ twin: { T: sample.T, SoC: sample.SoC }, history: [], stress: 0 });
+    }
+    _lastWokwiT = sample.t;
+    if (command) get().sendCommand(command);
+    get()._onSample(sample);
+  },
+
+  setSource(src) {
+    if (src === get().source) return;
+    const wasRunning = get().running;
+    get().reset();
+    set({ source: src });
+    if (wasRunning) get().start();
+  },
+
+  setWokwiTopic(topic) {
+    set({ wokwiTopic: (topic || '').trim() || DEFAULT_TOPIC });
+  },
+
   start() {
     if (get().running) return;
+
+    if (get().source === 'wokwi') {
+      _lastWokwiT = null;
+      wokwi = connectWokwi({
+        topic:    get().wokwiTopic,
+        onStatus: (wokwiStatus) => set({ wokwiStatus }),
+        onGuard:  (wokwiGuard, m) => set(m ? { wokwiGuard, mode: m } : { wokwiGuard }),
+        onSample: (sample, command) => get()._onWokwiSample(sample, command),
+      });
+      set({ running: true });
+      return;
+    }
+
     const { mode } = get();
 
     telemetry = createTelemetry({
@@ -94,11 +141,14 @@ const useStore = create((set, get) => ({
 
   stop() {
     if (telemetry) { telemetry.stop(); telemetry = null; }
-    set({ running: false });
+    if (wokwi) { wokwi.close(); wokwi = null; }
+    set({ running: false, wokwiStatus: 'off' });
   },
 
   reset() {
     if (telemetry) { telemetry.stop(); telemetry = null; }
+    if (wokwi) { wokwi.close(); wokwi = null; }
+    _lastWokwiT = null;
     _command = null;
     _telemetryOverride = null;
     resetRisk();
@@ -111,6 +161,8 @@ const useStore = create((set, get) => ({
       command:         null,
       stress:          0,
       injectedSignals: [],
+      wokwiStatus:     'off',
+      wokwiGuard:      null,
     });
   },
 

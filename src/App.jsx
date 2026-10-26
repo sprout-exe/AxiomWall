@@ -23,6 +23,7 @@ import TelemetryInspector  from './components/TelemetryInspector.jsx'
 import TwinChart           from './components/TwinChart.jsx'
 import DigitalVsPhysical   from './components/DigitalVsPhysical.jsx'
 import AttackLab           from './components/AttackLab.jsx'
+import WokwiLink           from './components/WokwiLink.jsx'
 import IncidentFeed        from './components/IncidentFeed.jsx'
 import LocalizationPipeline from './components/LocalizationPipeline.jsx'
 import ImpactChain        from './components/ImpactChain.jsx'
@@ -265,6 +266,11 @@ export default function App() {
 
           {/* ── Debug strip ── */}
           <DebugStrip />
+
+          {/* ── Data source: built-in simulator or live Wokwi ESP32 ── */}
+          <GlassCard>
+            <WokwiLink />
+          </GlassCard>
 
           {/* ── Attack Lab ── */}
           <GlassCard>

@@ -1,6 +1,6 @@
 // src/store/useStore.js
 // Zustand store: sample ring-buffer (120 s), twin state, mode, running flag,
-// detection result, and TEMPORARY fault-injection flags for the dev panel.
+// detection result, and attack-lab injection.
 // The twin reads ONLY the reported current (I) — never measured T or SoC.
 
 import { create } from 'zustand'
@@ -14,27 +14,24 @@ const MAX_HISTORY = 120;
 // One telemetry controller shared across the store lifetime
 let telemetry = null;
 
-// Fault-injection mutable flags (mutated synchronously before set())
-let faults = {
-  freezeT:    false,  // clamp T at 25 °C
-  addT:       false,  // add +6 K to T
-  jumpSoC:    false,  // one-shot: add +10 % to SoC, then clear
-  breakP:     false,  // multiply P by 2× (power inconsistency)
-};
+// ── Attack-lab transform hook ─────────────────────────────────────────────────
+// AttackLab registers this to falsify the REPORTED sample before evaluate().
+// The TRUE simulation (trueState inside telemetry) keeps running unaffected.
+// Returns { reportedSample, command }
+let _attackTransform = null;  // null = no active attack
 
-// Active command for kinetic interlock
+// ── Active command for kinetic interlock / command rules ─────────────────────
 let _command = null;
 
 const useStore = create((set, get) => ({
   // ── State ───────────────────────────────────────────────────────
-  sample:  null,           // latest raw sample
-  history: [],             // last 120 enriched samples (measured + twin)
+  sample:  null,           // latest reported sample (may be falsified)
+  history: [],             // last 120 enriched samples (reported + twin)
   twin:    { T: 31, SoC: 64 },  // twin internal state – initialised to plant start
   mode:    'idle',
   running: false,
   result:  null,           // latest evaluate() output
-  faults:  { freezeT: false, addT: false, jumpSoC: false, breakP: false },
-  command: null,
+  command: null,           // last command echoed to UI
 
   // ── Actions ─────────────────────────────────────────────────────
 
@@ -42,16 +39,15 @@ const useStore = create((set, get) => ({
   _onSample(rawSample) {
     const state = get();
 
-    // --- Apply fault injections BEFORE evaluate ---
+    // --- Apply attack transform BEFORE evaluate ---
     let sample = { ...rawSample };
+    let cmd = _command;
 
-    if (faults.freezeT) sample.T = 25;
-    if (faults.addT)    sample.T = sample.T + 6;
-    if (faults.jumpSoC) {
-      sample.SoC = Math.min(100, sample.SoC + 10);
-      faults.jumpSoC = false; // one-shot
+    if (_attackTransform) {
+      const out = _attackTransform(sample, state.history);
+      sample = out.sample ?? sample;
+      if (out.command !== undefined) cmd = out.command;
     }
-    if (faults.breakP) sample.P = sample.P * 2;
 
     // Advance twin using ONLY the reported current
     const twinNext = stepTwin(state.twin, sample.I, 1);
@@ -68,8 +64,8 @@ const useStore = create((set, get) => ({
     const history = [...state.history, enriched];
     if (history.length > MAX_HISTORY) history.shift();
 
-    // Run detection engine
-    const result = evaluate(enriched, history, _command);
+    // Run detection engine (command may be object or string)
+    const result = evaluate(enriched, history, cmd);
     // Clear one-shot command
     if (_command) _command = null;
 
@@ -78,7 +74,6 @@ const useStore = create((set, get) => ({
       history,
       twin:   { T: twinNext.T, SoC: twinNext.SoC },
       result,
-      faults: { ...faults },
     });
   },
 
@@ -104,7 +99,6 @@ const useStore = create((set, get) => ({
   /** Full reset – clears history and reinitialises twin state. */
   reset() {
     if (telemetry) { telemetry.stop(); telemetry = null; }
-    faults = { freezeT: false, addT: false, jumpSoC: false, breakP: false };
     _command = null;
     resetRisk();
     set({
@@ -113,7 +107,6 @@ const useStore = create((set, get) => ({
       twin:    { T: 31, SoC: 64 },
       running: false,
       result:  null,
-      faults:  { freezeT: false, addT: false, jumpSoC: false, breakP: false },
       command: null,
     });
   },
@@ -124,17 +117,18 @@ const useStore = create((set, get) => ({
     set({ mode: newMode });
   },
 
-  // ── Fault injection (dev panel) ──────────────────────────────────
+  // ── Attack-lab API ────────────────────────────────────────────────
 
-  toggleFault(name) {
-    if (name === 'jumpSoC') {
-      faults.jumpSoC = true; // always one-shot
-    } else {
-      faults[name] = !faults[name];
-    }
-    set({ faults: { ...faults } });
+  /**
+   * Register a transform that runs before evaluate() every tick.
+   * fn: (rawSample, history) => { sample?, command? }
+   * Pass null to remove.
+   */
+  setAttackTransform(fn) {
+    _attackTransform = fn;
   },
 
+  /** Send a one-shot command (object or string). */
   sendCommand(cmd) {
     _command = cmd;
     set({ command: cmd });

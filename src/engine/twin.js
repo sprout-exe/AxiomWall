@@ -3,7 +3,7 @@
 // Sign convention: I > 0 → discharge / driving, I < 0 → charging
 
 // ── Model parameters ─────────────────────────────────────────────────────────
-const Rint = 0.03;   // Ω     – lumped internal resistance
+export const Rint = 0.03;   // Ω     – lumped internal resistance
 const Cth  = 20000;  // J/K   – thermal capacity of the pack
 const Rth  = 0.05;   // K/W   – thermal resistance pack → ambient
 const Tamb = 28;     // °C    – ambient temperature

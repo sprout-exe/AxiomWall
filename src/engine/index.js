@@ -7,6 +7,7 @@ import {
   checkHeatingRate,
   checkSoCConservation,
   checkKineticInterlock,
+  checkCommandLimit,
   checkReplay,
 } from './rules.js';
 import { checkPowerConsistency } from './crossSensor.js';
@@ -17,11 +18,18 @@ import { computeRisk } from './risk.js';
  *
  * @param {object}  sample   – latest enriched sample (with twin_V, twin_T, twin_SoC)
  * @param {Array}   history  – ring buffer of past enriched samples (newest last)
- * @param {string|null} command – optional command, e.g. 'DISCHARGE_OFF'
+ * @param {string|{type:string,value:number}|null} command
+ *   – 'DISCHARGE_OFF' (legacy string), { type:'SET_CURRENT', value } object, or null
  * @returns {{ risk, response, reasons, crossSensor, localization, impact }}
  */
 export function evaluate(sample, history, command = null) {
   const reasons = [];
+
+  // Normalise command into separate pieces so rules stay simple
+  const commandStr = typeof command === 'string' ? command
+    : (command?.type === 'DISCHARGE_OFF' ? 'DISCHARGE_OFF' : null);
+  const commandObj = (command && typeof command === 'object' && command.type !== 'DISCHARGE_OFF')
+    ? command : null;
 
   // ── 1. Hard limits ───────────────────────────────────────────────
   reasons.push(...checkLimits(sample, history));
@@ -41,10 +49,14 @@ export function evaluate(sample, history, command = null) {
   const powerReason = checkPowerConsistency(sample);
 
   // ── 6. Kinetic interlock ─────────────────────────────────────────
-  const kineticReason = checkKineticInterlock(sample, command);
+  const kineticReason = checkKineticInterlock(sample, commandStr);
   if (kineticReason) reasons.push(kineticReason);
 
-  // ── 7. Replay detection ──────────────────────────────────────────
+  // ── 7. Command limit ─────────────────────────────────────────────
+  const cmdLimitReason = checkCommandLimit(sample, commandObj);
+  if (cmdLimitReason) reasons.push(cmdLimitReason);
+
+  // ── 8. Replay detection ──────────────────────────────────────────
   const replayReason = checkReplay(history);
   if (replayReason) reasons.push(replayReason);
 
@@ -62,11 +74,12 @@ export function evaluate(sample, history, command = null) {
   reasons.sort((a, b) => b.severity - a.severity);
 
   // ── Risk score + hysteretic response ─────────────────────────────
-  const { risk, response } = computeRisk(reasons);
+  const { risk, response, precheck } = computeRisk(reasons);
 
   return {
     risk,
     response,
+    precheck: precheck ?? false,
     reasons,
     crossSensor,
     localization: null,

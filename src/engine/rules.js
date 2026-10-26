@@ -3,6 +3,8 @@
 //   { rule: string, severity: 0–1, text: string, measured, expected }
 // Text must include the actual numbers so the WHY panel is self-explanatory.
 
+import { Rint } from './twin.js';
+
 const QNOM = 100; // Ah — matches twin.js
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -94,7 +96,7 @@ export function checkTwinResiduals(sample) {
       reasons.push({
         rule: 'twin_v',
         severity: clamp01(ratio / 2),
-        text: `Voltage ${f2(V)} V but twin expects ${f2(twin_V)} V at ${f1(I)} A (Rint loss ${f3(Math.abs(I) * 0.03)} V). Residual ${f2(diff)} V, tolerance 0.5 V.`,
+        text: `Voltage ${f2(V)} V but twin expects ${f2(twin_V)} V at ${f1(I)} A (Rint loss ${f3(Math.abs(I) * Rint)} V). Residual ${f2(diff)} V, tolerance 0.5 V.`,
         measured: V, expected: twin_V,
       });
     }
@@ -105,7 +107,7 @@ export function checkTwinResiduals(sample) {
     const diff = Math.abs(T - twin_T);
     const ratio = diff / 1.5;
     if (ratio > 1) {
-      const heatW = (I * I * 0.03).toFixed(0);
+      const heatW = (I * I * Rint).toFixed(0);
       reasons.push({
         rule: 'twin_t',
         severity: clamp01(ratio / 2),
@@ -181,13 +183,13 @@ export function checkSoCConservation(sample, history) {
 }
 
 // ── 5. Kinetic interlock ──────────────────────────────────────────────────────
-export function checkKineticInterlock(sample, command) {
-  if (command !== 'DISCHARGE_OFF') return null;
+export function checkKineticInterlock(sample, commandStr) {
+  if (commandStr !== 'DISCHARGE_OFF') return null;
   const { speed, I } = sample;
   if (speed > 0 && Math.abs(I) > 10) {
     return {
       rule: 'kinetic_interlock',
-      severity: 0.9,
+      severity: 1.0,
       text: `DISCHARGE_OFF commanded but vehicle moving at ${f1(speed)} km/h with ${f1(I)} A discharge current.`,
       measured: I, expected: 0,
     };
@@ -195,11 +197,38 @@ export function checkKineticInterlock(sample, command) {
   return null;
 }
 
-// ── 6. Replay detection ───────────────────────────────────────────────────────
-// Checks whether last 20 T & V samples are bit-exact copies of samples
-// at some lag in [20, 60] seconds — signature of a full-packet replay attack.
+// ── 6. Command limit ──────────────────────────────────────────────────────────
+// Fires when a SET_CURRENT command value is unsafe.
+// Charging (value < 0): |value| > 60 A → severity 1.0
+// Driving  (value > 0): value > 120 A  → severity 1.0
+export function checkCommandLimit(sample, commandObj) {
+  if (!commandObj || commandObj.type !== 'SET_CURRENT') return null;
+  const val = commandObj.value;
+  const isCharging = sample.I < 0 || val < 0;  // mode hint from current sign
+
+  if (isCharging && Math.abs(val) > 60) {
+    return {
+      rule: 'command_limit',
+      severity: 1.0,
+      text: `SET_CURRENT ${f1(val)} A requested while charging (limit 60 A, |value| = ${f1(Math.abs(val))} A).`,
+      measured: Math.abs(val), expected: 60,
+    };
+  }
+  if (!isCharging && val > 120) {
+    return {
+      rule: 'command_limit',
+      severity: 1.0,
+      text: `SET_CURRENT ${f1(val)} A requested while driving (limit 120 A, excess ${f1(val - 120)} A).`,
+      measured: val, expected: 120,
+    };
+  }
+  return null;
+}
+
+// ── 7. Replay detection ───────────────────────────────────────────────────────
+// Window N=10, lag range 10-60 s — catches a looped replay faster.
 export function checkReplay(history) {
-  const N = 20, lagMin = 20, lagMax = 60;
+  const N = 10, lagMin = 10, lagMax = 60;
   if (history.length < N + lagMin) return null;
 
   const recent = history.slice(-N);

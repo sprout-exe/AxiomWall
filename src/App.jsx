@@ -3,16 +3,22 @@
 // Layout (top-to-bottom):
 //   1. Header
 //   2. DigitalVsPhysical (Truth Split hero)
-//   3. TEMPORARY Dev Panel (fault injection + command)
-//   4. Mode selector + stream controls
-//   5. TelemetryStrip
-//   6. TwinChart
+//   3. Debug strip (mode, I, speed, failing rules)  ← temporary
+//   4. AttackLab
+//   5. FirewallConsole
+//   6. IncidentFeed
+//   7. Profile (mode selector) + stream controls
+//   8. TelemetryStrip
+//   9. TwinChart
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import useStore from './store/useStore.js'
-import TelemetryStrip from './components/TelemetryStrip.jsx'
-import TwinChart from './components/TwinChart.jsx'
+import TelemetryStrip    from './components/TelemetryStrip.jsx'
+import TwinChart         from './components/TwinChart.jsx'
 import DigitalVsPhysical from './components/DigitalVsPhysical.jsx'
+import AttackLab         from './components/AttackLab.jsx'
+import IncidentFeed      from './components/IncidentFeed.jsx'
+import FirewallConsole   from './components/FirewallConsole.jsx'
 
 const PROFILES = [
   { id: 'idle',           label: 'Idle' },
@@ -21,31 +27,68 @@ const PROFILES = [
   { id: 'fastChargeRamp', label: 'Fast-charge ramp' },
 ]
 
-const FAULTS = [
-  { id: 'freezeT', label: 'Freeze T at 25 °C', toggle: true },
-  { id: 'addT',    label: 'Add +6 K to T',      toggle: true },
-  { id: 'jumpSoC', label: 'Jump SoC +10 %',     toggle: false }, // one-shot
-  { id: 'breakP',  label: 'Break P',             toggle: true  },
-]
+// Map attack ID → human label for the incident feed
+const ATTACK_LABELS = {
+  freeze_T:      'Temperature Freeze',
+  replay:        'Replay',
+  soc_jump:      'SoC Jump',
+  coord_spoof:   'Coordinated Spoof',
+  malicious_cmd: 'Malicious Command',
+  discharge_off: 'DISCHARGE_OFF at Speed',
+  legit_ramp:    'Legit Fast-Charge Ramp',
+};
+
+// ── Tiny debug strip ──────────────────────────────────────────────────────────
+function DebugStrip() {
+  const mode    = useStore((s) => s.mode);
+  const sample  = useStore((s) => s.sample);
+  const result  = useStore((s) => s.result);
+
+  const I     = sample?.I?.toFixed(1)     ?? '—';
+  const speed = sample?.speed?.toFixed(1) ?? '—';
+  const precheck = result?.precheck ? ' ⚡PRE-CHECK' : '';
+
+  const failingRules = result?.reasons
+    ?.map(r => `${r.rule}:${(r.severity * 100).toFixed(0)}%`)
+    .join('  ') ?? '—';
+
+  return (
+    <div
+      className="rounded-xl px-4 py-2 font-mono text-xs flex flex-wrap gap-x-6 gap-y-1"
+      style={{ background: 'rgba(0,0,0,0.6)', color: '#6B7280', border: '1px solid rgba(255,255,255,0.06)' }}
+    >
+      <span><span style={{ color: '#9CA3AF' }}>mode:</span> <span style={{ color: '#C8F03C' }}>{mode}</span></span>
+      <span><span style={{ color: '#9CA3AF' }}>I:</span> {I} A</span>
+      <span><span style={{ color: '#9CA3AF' }}>speed:</span> {speed} km/h</span>
+      <span><span style={{ color: '#9CA3AF' }}>risk:</span> {result?.risk ?? 0}</span>
+      <span><span style={{ color: '#9CA3AF' }}>response:</span> <span style={{ color: result?.response === 'ALLOW' ? '#22C55E' : '#EF4444' }}>{result?.response ?? 'ALLOW'}{precheck}</span></span>
+      <span style={{ color: '#4B5563', flexBasis: '100%' }}>
+        <span style={{ color: '#9CA3AF' }}>rules:</span> {failingRules}
+      </span>
+    </div>
+  );
+}
 
 export default function App() {
-  const mode        = useStore((s) => s.mode)
-  const running     = useStore((s) => s.running)
-  const faults      = useStore((s) => s.faults)
-  const start       = useStore((s) => s.start)
-  const stop        = useStore((s) => s.stop)
-  const reset       = useStore((s) => s.reset)
-  const setMode     = useStore((s) => s.setMode)
-  const toggleFault = useStore((s) => s.toggleFault)
-  const sendCommand = useStore((s) => s.sendCommand)
+  const mode    = useStore((s) => s.mode)
+  const running = useStore((s) => s.running)
+  const start   = useStore((s) => s.start)
+  const stop    = useStore((s) => s.stop)
+  const reset   = useStore((s) => s.reset)
+  const setMode = useStore((s) => s.setMode)
+
+  // Track active attack ID so IncidentFeed knows the name
+  const [activeAttackId, setActiveAttackId] = useState(null)
 
   // Auto-start streaming on mount
-  useEffect(() => { start() }, [])   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { start() }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleMode(id) {
     setMode(id)
     if (!running) start()
   }
+
+  const activeAttackLabel = activeAttackId ? (ATTACK_LABELS[activeAttackId] ?? activeAttackId) : null;
 
   return (
     <div className="min-h-screen bg-canvas px-4 py-8 font-sans">
@@ -55,13 +98,16 @@ export default function App() {
         <header className="flex items-end justify-between">
           <div>
             <h1
-              className="text-4xl font-bold tracking-tight text-ink"
-              style={{ fontFamily: "'Sora', 'Inter', sans-serif" }}
+              className="text-4xl font-bold tracking-tight"
+              style={{ fontFamily: "'Sora', 'Inter', sans-serif", color: '#C8F03C' }}
             >
               PhysGuard
             </h1>
             <p className="mt-1 text-sm text-gray-500">
               Physics checks what passwords can't.
+            </p>
+            <p className="mt-0.5 text-xs" style={{ color: '#4B5563' }}>
+              Simulated data. Thermal time-scale ×20.
             </p>
           </div>
 
@@ -82,48 +128,27 @@ export default function App() {
           <DigitalVsPhysical />
         </section>
 
-        {/* ── DEV PANEL (temporary) ── */}
-        <section
-          className="rounded-2xl border p-4 space-y-3"
-          style={{ borderColor: 'rgba(0,0,0,0.12)', background: 'rgba(255,255,255,0.7)' }}
-        >
-          <p className="text-xs font-medium uppercase tracking-widest text-gray-400">
-            🛠 Dev Panel — Fault Injection
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {FAULTS.map((f) => {
-              const active = f.toggle ? faults[f.id] : false
-              return (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => toggleFault(f.id)}
-                  className={[
-                    'rounded-xl px-4 py-2 text-sm font-medium border transition-all',
-                    active
-                      ? 'bg-limit text-white border-limit shadow'
-                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50',
-                  ].join(' ')}
-                  style={active ? { background: '#F97316', borderColor: '#F97316' } : {}}
-                >
-                  {f.toggle && active ? '✓ ' : ''}{f.label}
-                </button>
-              )
-            })}
-
-            {/* DISCHARGE_OFF command */}
-            <button
-              type="button"
-              onClick={() => sendCommand('DISCHARGE_OFF')}
-              className="rounded-xl px-4 py-2 text-sm font-medium bg-block text-white shadow transition-all hover:opacity-90"
-              style={{ background: '#EF4444' }}
-            >
-              ⚡ DISCHARGE_OFF
-            </button>
-          </div>
+        {/* ── Debug strip (temporary) ── */}
+        <section>
+          <DebugStrip />
         </section>
 
-        {/* ── Mode selector ── */}
+        {/* ── Attack Lab ── */}
+        <section>
+          <AttackLab onActiveChange={setActiveAttackId} />
+        </section>
+
+        {/* ── Firewall Console ── */}
+        <section>
+          <FirewallConsole />
+        </section>
+
+        {/* ── Incident Feed ── */}
+        <section>
+          <IncidentFeed activeAttackLabel={activeAttackLabel} />
+        </section>
+
+        {/* ── Profile (mode selector) ── */}
         <section>
           <p className="mb-2 text-xs font-medium uppercase tracking-widest text-gray-400">
             Profile
@@ -137,9 +162,10 @@ export default function App() {
                 className={[
                   'rounded-xl px-4 py-2 text-sm font-medium transition-all',
                   mode === p.id
-                    ? 'bg-ink text-white shadow'
+                    ? 'text-white shadow'
                     : 'bg-white text-gray-600 shadow-sm hover:bg-gray-50',
                 ].join(' ')}
+                style={mode === p.id ? { background: '#1a1b1e', color: '#C8F03C' } : {}}
               >
                 {p.label}
               </button>

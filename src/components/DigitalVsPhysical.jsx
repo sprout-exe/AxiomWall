@@ -73,7 +73,7 @@ export default function DigitalVsPhysical() {
           className="flex flex-col items-center justify-center gap-3 px-6 sm:px-8 py-8 sm:py-10"
           style={{ borderRight: '1px solid rgba(255,255,255,0.10)' }}
         >
-          <p className="text-xs font-medium uppercase tracking-widest text-gray-500">
+          <p className="text-xs uppercase tracking-widest text-gray-400" style={{ fontFamily: "'Russo One', 'Teko', sans-serif" }}>
             Digital
           </p>
           {/* Big lime checkmark badge */}
@@ -85,7 +85,9 @@ export default function DigitalVsPhysical() {
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          <p className="text-xl font-bold text-lime" style={{ color: '#C8F03C' }}>VALID</p>
+          <p className="text-xl" style={{ fontFamily: "'Russo One', 'Teko', sans-serif", color: '#C8F03C', letterSpacing: '0.05em' }}>
+            VALID
+          </p>
           <p className="text-center text-xs text-gray-500 max-w-[180px]">
             Signed and authenticated<br />(simulated)
           </p>
@@ -100,7 +102,7 @@ export default function DigitalVsPhysical() {
             borderRight: 'none',
           }}
         >
-          <p className="text-xs font-medium uppercase tracking-widest text-gray-500">
+          <p className="text-xs uppercase tracking-widest text-gray-400" style={{ fontFamily: "'Russo One', 'Teko', sans-serif" }}>
             Physics
           </p>
           {/* State icon */}
@@ -120,7 +122,7 @@ export default function DigitalVsPhysical() {
               </svg>
             )}
           </div>
-          <p className="text-xl font-bold" style={{ color: physics.color }}>
+          <p className="text-xl" style={{ fontFamily: "'Russo One', 'Teko', sans-serif", color: physics.color, letterSpacing: '0.05em' }}>
             {physics.label}
           </p>
           <p className="text-center text-xs text-gray-500">
@@ -131,10 +133,9 @@ export default function DigitalVsPhysical() {
 
       {/* ── Gauge + WHY row ── */}
       <div
-        className="px-6 sm:px-8 py-8 grid gap-8 w-full max-w-full"
+        className="px-4 sm:px-8 py-8 grid grid-cols-1 md:grid-cols-[auto_1fr] gap-8 w-full max-w-full"
         style={{
           borderTop: '1px solid rgba(255,255,255,0.10)',
-          gridTemplateColumns: 'auto 1fr',
         }}
       >
         {/* Gauge */}
@@ -144,7 +145,7 @@ export default function DigitalVsPhysical() {
 
         {/* WHY panel */}
         <div className="flex flex-col gap-3 min-w-0">
-          <p className="text-xs font-medium uppercase tracking-widest text-gray-500">
+          <p className="text-xs uppercase tracking-widest text-gray-400" style={{ fontFamily: "'Russo One', 'Teko', sans-serif" }}>
             Why
           </p>
           {reasons.length === 0 ? (

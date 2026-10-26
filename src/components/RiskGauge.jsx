@@ -177,7 +177,7 @@ export default function RiskGauge({ risk = 0, response = 'ALLOW' }) {
           />
         ))}
 
-        {/* ── Scale numbers around the arc in glowing white (Sora font) ── */}
+        {/* ── Scale numbers around the arc in glowing white (Russo One font) ── */}
         {ticks.map(
           (t) =>
             t.numPos && (
@@ -189,8 +189,8 @@ export default function RiskGauge({ risk = 0, response = 'ALLOW' }) {
                 dominantBaseline="central"
                 fill="#FFFFFF"
                 fontSize="10"
-                fontWeight="700"
-                fontFamily="'Sora', sans-serif"
+                fontWeight="400"
+                fontFamily="'Russo One', 'Teko', sans-serif"
                 style={{
                   filter: 'drop-shadow(0 0 3px rgba(255, 255, 255, 0.85))',
                   textShadow: '0 0 6px rgba(255, 255, 255, 0.85)',
@@ -245,7 +245,7 @@ export default function RiskGauge({ risk = 0, response = 'ALLOW' }) {
           }}
         />
 
-        {/* ── Big risk number in glowing white just below the hub ── */}
+        {/* ── Big risk number in glowing white just below the hub (Russo One font) ── */}
         <text
           x={CX}
           y={162}
@@ -253,8 +253,8 @@ export default function RiskGauge({ risk = 0, response = 'ALLOW' }) {
           dominantBaseline="central"
           fill="#FFFFFF"
           fontSize={34}
-          fontWeight={800}
-          fontFamily="'Sora', sans-serif"
+          fontWeight={400}
+          fontFamily="'Russo One', 'Teko', sans-serif"
           style={{
             filter: 'drop-shadow(0 0 6px rgba(255, 255, 255, 0.6))',
             textShadow: '0 0 14px rgba(255, 255, 255, 0.7)',
@@ -271,8 +271,8 @@ export default function RiskGauge({ risk = 0, response = 'ALLOW' }) {
           dominantBaseline="central"
           fill="#9CA3AF"
           fontSize={9}
-          fontWeight={700}
-          fontFamily="'Sora', sans-serif"
+          fontWeight={400}
+          fontFamily="'Russo One', 'Teko', sans-serif"
           letterSpacing="0.18em"
         >
           RISK
@@ -286,8 +286,8 @@ export default function RiskGauge({ risk = 0, response = 'ALLOW' }) {
           dominantBaseline="central"
           fill={respColor}
           fontSize={13}
-          fontWeight={800}
-          fontFamily="'Sora', sans-serif"
+          fontWeight={400}
+          fontFamily="'Russo One', 'Teko', sans-serif"
           letterSpacing="0.14em"
           style={{
             filter: `drop-shadow(0 0 5px ${respColor}aa)`,

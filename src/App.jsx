@@ -22,6 +22,7 @@ import AttackLab         from './components/AttackLab.jsx'
 import IncidentFeed      from './components/IncidentFeed.jsx'
 import FirewallConsole   from './components/FirewallConsole.jsx'
 import BackgroundScene   from './components/BackgroundScene.jsx'
+import LoadingScreen     from './components/LoadingScreen.jsx'
 
 const PROFILES = [
   { id: 'idle',           label: 'Idle' },
@@ -130,11 +131,12 @@ function SectionLabel({ children }) {
   return (
     <p style={{
       margin: '0 0 0.5rem',
-      fontSize: '0.65rem',
-      fontWeight: 600,
+      fontFamily: "'Russo One', 'Teko', sans-serif",
+      fontSize: '0.8rem',
+      fontWeight: 400,
       textTransform: 'uppercase',
-      letterSpacing: '0.12em',
-      color: '#6B7280',
+      letterSpacing: '0.08em',
+      color: '#9CA3AF',
     }}>
       {children}
     </p>
@@ -170,6 +172,7 @@ export default function App() {
   const setMode = useStore((s) => s.setMode)
 
   const [activeAttackId, setActiveAttackId] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => { start() }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -182,6 +185,9 @@ export default function App() {
 
   return (
     <>
+      {/* ── Loading Screen (shown once on page load) ── */}
+      {loading && <LoadingScreen onComplete={() => setLoading(false)} />}
+
       {/* ── Fixed background (z=0, no layout impact) ── */}
       <BackgroundScene />
 
@@ -214,16 +220,20 @@ export default function App() {
               <ShieldBolt size={40} />
               <div>
                 <h1 style={{
-                  fontFamily: "'Sora', 'Inter', sans-serif",
-                  fontSize: '2.25rem',
-                  fontWeight: 800,
-                  color: '#C8F03C',
+                  fontFamily: "'Russo One', 'Teko', sans-serif",
+                  fontSize: 'clamp(2.5rem, 5vw, 3.5rem)',
+                  fontWeight: 400,
+                  color: '#FFFFFF',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.02em',
                   margin: 0,
-                  letterSpacing: '-0.025em',
                   lineHeight: 1.05,
-                  textShadow: '0 0 30px rgba(200,240,60,0.3)',
+                  display: 'inline-block',
+                  transform: 'skewX(-8deg)',
+                  textShadow:
+                    '0 0 10px rgba(255,255,255,0.85), 0 0 20px rgba(34,211,238,0.5), 0 0 35px rgba(34,197,94,0.35)',
                 }}>
-                  AxiomWall
+                  AXIOMWALL
                 </h1>
                 <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: '#9CA3AF', lineHeight: 1.3 }}>
                   Physics checks what passwords can't.
@@ -359,7 +369,7 @@ export default function App() {
             gap: '0.5rem',
           }}>
             <p style={{ margin: 0, fontSize: '0.68rem', color: '#4B5563' }}>
-              Background imagery: stock photos, for demonstration only.
+              Background imagery: stock photo, for demonstration only.
             </p>
             <p style={{ margin: 0, fontSize: '0.68rem', color: '#374151' }}>
               AxiomWall — Battery Physics Firewall Demo

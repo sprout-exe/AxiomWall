@@ -99,7 +99,7 @@ export default function IncidentFeed({ activeAttackLabel }) {
       style={{ background: '#0d0e10', border: '1px solid rgba(255,255,255,0.08)' }}
     >
       <div className="px-6 pt-5 pb-3 flex items-center justify-between">
-        <p className="text-xs font-medium uppercase tracking-widest" style={{ color: '#F59E0B' }}>
+        <p className="text-xs uppercase tracking-widest" style={{ fontFamily: "'Russo One', 'Teko', sans-serif", color: '#F59E0B' }}>
           Incident Feed
         </p>
         <span className="text-xs text-gray-600">{incidents.length}/{MAX_INCIDENTS}</span>

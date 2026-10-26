@@ -112,7 +112,7 @@ export default function TwinChart() {
     <div className="rounded-2xl bg-white p-5 shadow-sm">
       {/* Header + toggle */}
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-gray-500">
+        <h2 className="text-sm uppercase tracking-widest text-gray-400" style={{ fontFamily: "'Russo One', 'Teko', sans-serif" }}>
           Digital Twin — {view === 'voltage' ? 'Voltage' : 'Temperature'}
         </h2>
         <div className="flex gap-1 rounded-xl bg-gray-100 p-1">

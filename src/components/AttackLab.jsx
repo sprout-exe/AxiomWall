@@ -207,7 +207,7 @@ export default function AttackLab({ onActiveChange }) {
       {/* ── Header ── */}
       <div className="px-6 pt-6 pb-4 flex items-center justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-widest" style={{ color: '#EF4444' }}>
+          <p className="text-xs uppercase tracking-widest" style={{ fontFamily: "'Russo One', 'Teko', sans-serif", color: '#EF4444' }}>
             ⚔ Attack Lab
           </p>
           <p className="mt-0.5 text-xs text-gray-500">

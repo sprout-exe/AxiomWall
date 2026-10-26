@@ -84,9 +84,9 @@ function Chip({ config, sample, result }) {
         <span
           style={{
             fontSize: '1.75rem',
-            fontWeight: 600,
+            fontWeight: 400,
             lineHeight: 1,
-            fontFamily: "'Sora', 'Inter', sans-serif",
+            fontFamily: "'Russo One', 'Teko', sans-serif",
             color: '#F0F2F5',
           }}
         >

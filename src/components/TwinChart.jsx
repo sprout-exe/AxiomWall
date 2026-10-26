@@ -48,7 +48,44 @@ function buildChartData(history, view) {
   })
 }
 
+/**
+ * Compute a tight Y-axis domain from the chart data.
+ * - Pads `pad` units above and below the full data range (measures + band).
+ * - Enforces `minSpan` so a tiny drift doesn't fill the whole chart height.
+ * Returns a [lo, hi] tuple suitable for Recharts `domain` prop.
+ */
+function yDomain(data, pad, minSpan) {
+  if (!data.length) return ['auto', 'auto']
+
+  let lo = Infinity, hi = -Infinity
+  for (const d of data) {
+    for (const key of ['measured', 'twin', 'bandLo', 'bandHi']) {
+      const v = d[key]
+      if (v != null && isFinite(v)) {
+        if (v < lo) lo = v
+        if (v > hi) hi = v
+      }
+    }
+  }
+  if (!isFinite(lo)) return ['auto', 'auto']
+
+  lo -= pad
+  hi += pad
+
+  // Enforce minimum visible span, expanding symmetrically
+  const span = hi - lo
+  if (span < minSpan) {
+    const extra = (minSpan - span) / 2
+    lo -= extra
+    hi += extra
+  }
+
+  // Round outward to whole numbers for clean grid lines
+  return [Math.floor(lo), Math.ceil(hi)]
+}
+
 const CustomTooltip = ({ active, payload, label, unit }) => {
+
   if (!active || !payload?.length) return null
   return (
     <div className="rounded-xl bg-white px-3 py-2 shadow-lg text-xs space-y-0.5 border border-gray-100">
@@ -129,7 +166,11 @@ export default function TwinChart() {
             tickLine={false}
             axisLine={false}
             width={38}
-            tickFormatter={(v) => v.toFixed(1)}
+            tickFormatter={(v) => Math.round(v).toString()}
+            domain={view === 'voltage'
+              ? yDomain(data, 1.5, 3)
+              : yDomain(data, 2,   8)}
+            allowDataOverflow={false}
           />
           <Tooltip content={<CustomTooltip unit={unit} />} />
 

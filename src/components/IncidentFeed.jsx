@@ -1,4 +1,4 @@
-﻿// src/components/IncidentFeed.jsx
+// src/components/IncidentFeed.jsx
 // Incident Feed — deep indigo-navy gradient background (#1E1B4B to #0F172A),
 // bold white headings, event rows with bold colored left stripes,
 // timestamps in mono at slate-300, readable contrast >= 4.5:1.
@@ -29,11 +29,13 @@ function shortReason(reasons) {
   return text.length > 72 ? text.slice(0, 70) + '…' : text
 }
 
-export default function IncidentFeed({ activeAttackLabel }) {
+export default function IncidentFeed({ activeAttackLabel, incidents: propIncidents, setIncidents: propSetIncidents }) {
   const result  = useStore((s) => s.result)
   const sample  = useStore((s) => s.sample)
 
-  const [incidents, setIncidents] = useState([])
+  const [internalIncidents, setInternalIncidents] = useState([])
+  const incidents = propIncidents ?? internalIncidents
+  const setIncidents = propSetIncidents ?? setInternalIncidents
   const prevResponse = useRef('ALLOW')
   const attackStartRef = useRef(null)
   const peakRef = useRef('ALLOW')

@@ -24,6 +24,9 @@ import TwinChart           from './components/TwinChart.jsx'
 import DigitalVsPhysical   from './components/DigitalVsPhysical.jsx'
 import AttackLab           from './components/AttackLab.jsx'
 import IncidentFeed        from './components/IncidentFeed.jsx'
+import LocalizationPipeline from './components/LocalizationPipeline.jsx'
+import ImpactChain        from './components/ImpactChain.jsx'
+import SustainabilityCard  from './components/SustainabilityCard.jsx'
 import FirewallConsole     from './components/FirewallConsole.jsx'
 import BackgroundScene     from './components/BackgroundScene.jsx'
 import LoadingScreen       from './components/LoadingScreen.jsx'
@@ -157,6 +160,7 @@ export default function App() {
 
   const [activeAttackId, setActiveAttackId] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [incidents, setIncidents] = useState([])
 
   useEffect(() => { start() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -274,7 +278,20 @@ export default function App() {
           <TwinChart />
 
           {/* ── Incident Feed (deep indigo-navy gradient) ── */}
-          <IncidentFeed activeAttackLabel={activeAttackLabel} />
+          <IncidentFeed
+            activeAttackLabel={activeAttackLabel}
+            incidents={incidents}
+            setIncidents={setIncidents}
+          />
+
+          {/* ── Fault Localization & Physical Impact Chain (side by side on desktop, stacked at 390 px) ── */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <LocalizationPipeline />
+            <ImpactChain />
+          </div>
+
+          {/* ── Sustainability & Fleet Impact Card (full width below) ── */}
+          <SustainabilityCard incidents={incidents} />
 
           {/* ── Profile (mode selector) ── */}
           <section>

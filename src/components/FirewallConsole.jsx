@@ -1,4 +1,4 @@
-﻿// src/components/FirewallConsole.jsx
+// src/components/FirewallConsole.jsx
 // Firewall Console — docked ink-black card with JetBrains Mono.
 // Sticky/fixed bottom-4, max-height ~180px, internal scroll, collapse/expand toggle.
 // Electric border effect: animated zigzag electricity lines along top/bottom,
@@ -53,10 +53,20 @@ export default function FirewallConsole() {
       physicsStr = top ? `[Physics FAILED: ${top}]` : `[Physics FAILED]`
     }
 
+    const nodeStr = result?.localization?.node && result.localization.node !== 'none'
+      ? `[Fault: ${result.localization.node}]`
+      : null
+
+    const impactStr = result?.impact?.consequence && response !== 'ALLOW'
+      ? `[Impact: ${result.impact.consequence}]`
+      : null
+
     const line = {
       id:       Date.now() + Math.random(),
       t:        `t=${sample.t ?? 0}`,
       physics:  physicsStr,
+      node:     nodeStr,
+      impact:   impactStr,
       verdict:  tag,
       color,
       isAllow:  response === 'ALLOW',
@@ -238,6 +248,23 @@ export default function FirewallConsole() {
                 <span style={{ color: ln.isAllow ? '#4ADE80' : '#F59E0B', wordBreak: 'break-all' }}>
                   {ln.physics}
                 </span>
+
+                {/* localization node if present */}
+                {ln.node && (
+                  <>
+                    <span style={{ color: '#4B5563' }}>-&gt;</span>
+                    <span style={{ color: '#C084FC', fontWeight: 600 }}>{ln.node}</span>
+                  </>
+                )}
+
+                {/* impact consequence if present */}
+                {ln.impact && (
+                  <>
+                    <span style={{ color: '#4B5563' }}>-&gt;</span>
+                    <span style={{ color: '#FCA5A5', fontSize: '10px' }}>{ln.impact}</span>
+                  </>
+                )}
+
                 <span style={{ color: '#4B5563' }}>-&gt;</span>
 
                 {/* firewall decision */}

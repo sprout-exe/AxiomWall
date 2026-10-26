@@ -1,5 +1,5 @@
-﻿// src/engine/index.js
-// Main evaluate() pipeline — wires rules.js + crossSensor.js + risk.js.
+// src/engine/index.js
+// Main evaluate() pipeline — wires rules.js + crossSensor.js + risk.js + localize.js + impact.js.
 
 import {
   checkLimits,
@@ -12,6 +12,8 @@ import {
 } from './rules.js';
 import { checkPowerConsistency } from './crossSensor.js';
 import { computeRisk } from './risk.js';
+import { localize } from './localize.js';
+import { impact } from './impact.js';
 
 export function evaluate(sample, history, command = null) {
   const reasons = [];
@@ -64,6 +66,10 @@ export function evaluate(sample, history, command = null) {
   // Risk score + hysteretic response
   const { risk, instantRisk, response, precheck } = computeRisk(reasons);
 
+  // Additive fault localization and impact chain
+  const localization = localize(reasons, sample, sample?.mode);
+  const impactRes = impact({ risk, instantRisk, response, precheck, reasons }, sample, sample?.mode);
+
   return {
     risk,
     instantRisk: instantRisk ?? risk,
@@ -71,7 +77,7 @@ export function evaluate(sample, history, command = null) {
     precheck: precheck ?? false,
     reasons,
     crossSensor,
-    localization: null,
-    impact: null,
+    localization,
+    impact: impactRes,
   };
 }

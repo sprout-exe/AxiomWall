@@ -1,6 +1,7 @@
 ﻿// src/components/IncidentFeed.jsx
-// Incident Feed — newest entry first inside glossy white card.
-// Text colors: dark ink (#101114 headings, #475569 secondary).
+// Incident Feed — deep indigo-navy gradient background (#1E1B4B to #0F172A),
+// bold white headings, event rows with bold colored left stripes,
+// timestamps in mono at slate-300, readable contrast >= 4.5:1.
 
 import { useState, useRef, useEffect } from 'react'
 import useStore from '../store/useStore.js'
@@ -8,10 +9,10 @@ import useStore from '../store/useStore.js'
 const MAX_INCIDENTS = 20
 
 const RESPONSE_COLOR = {
-  WARN:  '#D97706',
-  LIMIT: '#EA580C',
-  BLOCK: '#DC2626',
-  ALLOW: '#16A34A',
+  WARN:  '#F59E0B',
+  LIMIT: '#F97316',
+  BLOCK: '#EF4444',
+  ALLOW: '#22C55E',
 }
 
 const RESPONSE_LABEL = {
@@ -75,79 +76,77 @@ export default function IncidentFeed({ activeAttackLabel }) {
     prevResponse.current = response
   }, [result, sample, activeAttackLabel])
 
-  if (incidents.length === 0) {
-    return (
-      <div className="p-6 text-center">
-        <p
-          className="text-xs uppercase tracking-wider font-bold text-slate-700 m-0"
-          style={{ fontFamily: "'Russo One', 'Teko', sans-serif" }}
-        >
-          Incident Feed
-        </p>
-        <p className="mt-2 text-xs text-slate-500 italic m-0 font-medium">
-          No security incidents detected yet.
-        </p>
-      </div>
-    )
-  }
-
   return (
-    <div className="p-6">
-      <div className="pb-3 flex items-center justify-between">
+    <div
+      className="p-6 rounded-3xl overflow-hidden"
+      style={{
+        background: 'linear-gradient(135deg, #1E1B4B 0%, #0F172A 100%)',
+        border: '1px solid rgba(255, 255, 255, 0.12)',
+        boxShadow: '0 12px 36px rgba(0, 0, 0, 0.45)',
+      }}
+    >
+      <div className="pb-3 flex items-center justify-between border-b border-white/10 mb-3">
         <p
-          className="text-xs uppercase tracking-wider font-bold text-slate-900 m-0"
+          className="text-sm uppercase tracking-wider font-bold text-white m-0"
           style={{ fontFamily: "'Russo One', 'Teko', sans-serif" }}
         >
-          Incident Feed
+          Incident Security Feed
         </p>
-        <span className="text-xs font-mono font-semibold text-slate-500">
+        <span className="text-xs font-mono font-semibold text-slate-300">
           {incidents.length}/{MAX_INCIDENTS}
         </span>
       </div>
 
-      <div className="flex flex-col gap-2.5">
-        {incidents.map((inc) => (
-          <div
-            key={inc.id}
-            className="rounded-xl p-3.5 transition-all"
-            style={{
-              background: '#FFFFFF',
-              border: '1px solid #E2E8F0',
-              borderLeft: `4px solid ${RESPONSE_COLOR[inc.peakResponse] ?? '#94A3B8'}`,
-              boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
-            }}
-          >
-            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-              <span
-                className="text-xs font-bold font-mono px-2 py-0.5 rounded"
-                style={{
-                  background: `${RESPONSE_COLOR[inc.peakResponse]}18`,
-                  color: RESPONSE_COLOR[inc.peakResponse],
-                }}
-              >
-                {RESPONSE_LABEL[inc.peakResponse] ?? inc.peakResponse}
-              </span>
-              <span className="text-xs font-mono text-slate-500">{inc.time}</span>
-              {inc.detectionMs != null && (
-                <span className="ml-auto text-xs font-mono font-medium text-slate-600">
-                  +{inc.detectionMs} s to detect
+      {incidents.length === 0 ? (
+        <div className="py-6 text-center">
+          <p className="text-xs text-slate-400 italic m-0 font-medium">
+            No security incidents detected yet. Normal telemetry operations.
+          </p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2.5">
+          {incidents.map((inc) => (
+            <div
+              key={inc.id}
+              className="rounded-xl p-3.5 transition-all"
+              style={{
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderLeft: `4px solid ${RESPONSE_COLOR[inc.peakResponse] ?? '#94A3B8'}`,
+              }}
+            >
+              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                <span
+                  className="text-xs font-bold font-mono px-2 py-0.5 rounded shadow-sm"
+                  style={{
+                    background: `${RESPONSE_COLOR[inc.peakResponse]}22`,
+                    color: RESPONSE_COLOR[inc.peakResponse],
+                    border: `1px solid ${RESPONSE_COLOR[inc.peakResponse]}55`,
+                  }}
+                >
+                  {RESPONSE_LABEL[inc.peakResponse] ?? inc.peakResponse}
                 </span>
-              )}
+                <span className="text-xs font-mono text-slate-300">{inc.time}</span>
+                {inc.detectionMs != null && (
+                  <span className="ml-auto text-xs font-mono font-medium text-slate-300">
+                    +{inc.detectionMs} s to detect
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 mb-1">
+                <span
+                  className="rounded px-2 py-0.5 text-xs font-bold font-mono bg-red-950/80 text-red-200 border border-red-500/40"
+                >
+                  {inc.attackName}
+                </span>
+              </div>
+              <p className="text-xs text-slate-200 leading-relaxed m-0 font-medium">
+                {inc.topReason}
+              </p>
             </div>
-            <div className="flex items-center gap-2 mb-1">
-              <span
-                className="rounded px-2 py-0.5 text-xs font-bold font-mono"
-                style={{ background: '#FEE2E2', color: '#B91C1C' }}
-              >
-                {inc.attackName}
-              </span>
-            </div>
-            <p className="text-xs text-slate-700 leading-relaxed m-0 font-medium">
-              {inc.topReason}
-            </p>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

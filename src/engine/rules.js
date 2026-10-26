@@ -1,7 +1,8 @@
-// src/engine/rules.js
-// Detection rules.  Each rule returns null (pass) or:
+﻿// src/engine/rules.js
+// Detection rules. Each rule returns null (pass) or:
 //   { rule: string, severity: 0–1, text: string, measured, expected }
-// Text must include the actual numbers so the WHY panel is self-explanatory.
+// Continuous twin residual severity: z = |measured - twin| / tol
+// severity = 0 if z <= 1, else min(1, 0.25 + 0.75*(z-1)/4).
 
 import { Rint } from './twin.js';
 
@@ -83,48 +84,51 @@ export function checkLimits(sample, history) {
   return reasons;
 }
 
-// ── 2. Twin residuals ─────────────────────────────────────────────────────────
+// ── 2. Twin residuals (continuous severity) ───────────────────────────────────
 export function checkTwinResiduals(sample) {
   const reasons = [];
   const { V, T, SoC, I, twin_V, twin_T, twin_SoC } = sample;
 
-  // Voltage residual — threshold 0.5 V, ratio = |diff| / 0.5
+  // Voltage residual — tolerance 0.5 V
   if (twin_V != null) {
     const diff = Math.abs(V - twin_V);
-    const ratio = diff / 0.5;
-    if (ratio > 1) {
+    const z = diff / 0.5;
+    if (z > 1) {
+      const severity = Math.min(1, 0.25 + 0.75 * (z - 1) / 4);
       reasons.push({
         rule: 'twin_v',
-        severity: clamp01(ratio / 2),
+        severity,
         text: `Voltage ${f2(V)} V but twin expects ${f2(twin_V)} V at ${f1(I)} A (Rint loss ${f3(Math.abs(I) * Rint)} V). Residual ${f2(diff)} V, tolerance 0.5 V.`,
         measured: V, expected: twin_V,
       });
     }
   }
 
-  // Temperature residual — threshold 1.5 K
+  // Temperature residual — tolerance 1.5 K
   if (twin_T != null) {
     const diff = Math.abs(T - twin_T);
-    const ratio = diff / 1.5;
-    if (ratio > 1) {
+    const z = diff / 1.5;
+    if (z > 1) {
+      const severity = Math.min(1, 0.25 + 0.75 * (z - 1) / 4);
       const heatW = (I * I * Rint).toFixed(0);
       reasons.push({
         rule: 'twin_t',
-        severity: clamp01(ratio / 2),
-        text: `Reported temperature ${f1(T)} °C but the twin expects ${f1(twin_T)} °C at ${f1(Math.abs(I))} A (heating ${heatW} W). Residual ${f1(diff)} K, tolerance 1.5 K.`,
+        severity,
+        text: `Reported temperature ${f1(T)} °C but twin expects ${f1(twin_T)} °C at ${f1(Math.abs(I))} A (expected heating ${heatW} W). Residual ${f1(diff)} K, tolerance 1.5 K.`,
         measured: T, expected: twin_T,
       });
     }
   }
 
-  // SoC residual — threshold 1.5 %
+  // SoC residual — tolerance 1.5 %
   if (twin_SoC != null) {
     const diff = Math.abs(SoC - twin_SoC);
-    const ratio = diff / 1.5;
-    if (ratio > 1) {
+    const z = diff / 1.5;
+    if (z > 1) {
+      const severity = Math.min(1, 0.25 + 0.75 * (z - 1) / 4);
       reasons.push({
         rule: 'twin_soc',
-        severity: clamp01(ratio / 2),
+        severity,
         text: `Reported SoC ${f1(SoC)} % but twin expects ${f1(twin_SoC)} %. Residual ${f1(diff)} %, tolerance 1.5 %.`,
         measured: SoC, expected: twin_SoC,
       });
@@ -135,8 +139,6 @@ export function checkTwinResiduals(sample) {
 }
 
 // ── 3. Heating-rate suppression ───────────────────────────────────────────────
-// Fires when twin expects clear heating (> 0.05 K/s) but reported rate < 20%.
-// Uses last 5 history entries (including current sample).
 export function checkHeatingRate(history) {
   if (history.length < 5) return null;
   const w = history.slice(-5);
@@ -147,11 +149,14 @@ export function checkHeatingRate(history) {
   const twinDTdt = (w[4].twin_T - w[0].twin_T) / span;
 
   if (twinDTdt > 0.05 && reportedDTdt < 0.2 * twinDTdt) {
-    const pct = reportedDTdt / twinDTdt;
+    const ratio = reportedDTdt / twinDTdt;
+    const severity = Math.min(1, 0.4 + 0.6 * (1 - Math.max(0, ratio)));
+    const I_avg = w.reduce((acc, s) => acc + Math.abs(s.I), 0) / w.length;
+    const heatW = (I_avg * I_avg * Rint).toFixed(0);
     return {
       rule: 'heating_rate',
-      severity: clamp01(1 - pct / 0.2),
-      text: `Twin predicts heating at ${f3(twinDTdt)} K/s but reported rate is only ${f3(reportedDTdt)} K/s (${(pct * 100).toFixed(0)} % of expected). Possible sensor freeze or substitution.`,
+      severity,
+      text: `Twin predicts heating at ${f3(twinDTdt)} K/s (expected heating ${heatW} W) but reported rate is only ${f3(reportedDTdt)} K/s (${(ratio * 100).toFixed(0)} % of expected). Possible sensor freeze.`,
       measured: reportedDTdt, expected: twinDTdt,
     };
   }
@@ -159,7 +164,6 @@ export function checkHeatingRate(history) {
 }
 
 // ── 4. SoC energy conservation ────────────────────────────────────────────────
-// Fires when reported ΔSoC/s > 3× Coulomb-counting expectation + 0.3 %.
 export function checkSoCConservation(sample, history) {
   if (history.length < 2) return null;
   const prev = history[history.length - 2];
@@ -198,13 +202,10 @@ export function checkKineticInterlock(sample, commandStr) {
 }
 
 // ── 6. Command limit ──────────────────────────────────────────────────────────
-// Fires when a SET_CURRENT command value is unsafe.
-// Charging (value < 0): |value| > 60 A → severity 1.0
-// Driving  (value > 0): value > 120 A  → severity 1.0
 export function checkCommandLimit(sample, commandObj) {
   if (!commandObj || commandObj.type !== 'SET_CURRENT') return null;
   const val = commandObj.value;
-  const isCharging = sample.I < 0 || val < 0;  // mode hint from current sign
+  const isCharging = sample.I < 0 || val < 0;
 
   if (isCharging && Math.abs(val) > 60) {
     return {
@@ -226,7 +227,6 @@ export function checkCommandLimit(sample, commandObj) {
 }
 
 // ── 7. Replay detection ───────────────────────────────────────────────────────
-// Window N=10, lag range 10-60 s — catches a looped replay faster.
 export function checkReplay(history) {
   const N = 10, lagMin = 10, lagMax = 60;
   if (history.length < N + lagMin) return null;

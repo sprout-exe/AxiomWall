@@ -1,31 +1,33 @@
-﻿// src/App.jsx
+// src/App.jsx
 // AxiomWall — main shell.
 // Layout (top-to-bottom):
 //   1. BackgroundScene (fixed, z=0)
 //   2. FallingCars (fixed, z=0, pointer-events none)
-//   3. Header (shield+bolt logomark, running indicator)
+//   3. Header (wordmark, running indicator)
 //   4. DigitalVsPhysical (Truth Split hero — glossy white glass card)
 //   5. Debug strip (glossy white glass)
-//   6. AttackLab (glossy white glass card)
-//   7. TwinChart (MOVED HERE directly after Attack Lab — glossy white card)
-//   8. IncidentFeed (glossy white glass card)
-//   9. Profile (mode selector — glossy white buttons)
-//  10. Stream controls (Start / Stop / Reset)
-//  11. TelemetryStrip (glossy white chips)
-//  12. FirewallConsole (sticky/fixed docked at bottom)
-//  13. Footer
+//   6. AttackLab (glossy white glass card with neon circuit background)
+//   7. TelemetryInspector (collapsible card below Attack Lab & above chart)
+//   8. TwinChart (directly after TelemetryInspector — mint gradient card)
+//   9. IncidentFeed (deep indigo-navy gradient card)
+//  10. Profile (mode selector — glossy white buttons with neon highlight)
+//  11. Stream controls (Start / Stop / Reset)
+//  12. TelemetryStrip (glossy white chips)
+//  13. FirewallConsole (sticky/fixed docked at bottom)
+//  14. Footer
 
 import { useEffect, useState } from 'react'
 import useStore from './store/useStore.js'
-import TelemetryStrip    from './components/TelemetryStrip.jsx'
-import TwinChart         from './components/TwinChart.jsx'
-import DigitalVsPhysical from './components/DigitalVsPhysical.jsx'
-import AttackLab         from './components/AttackLab.jsx'
-import IncidentFeed      from './components/IncidentFeed.jsx'
-import FirewallConsole   from './components/FirewallConsole.jsx'
-import BackgroundScene   from './components/BackgroundScene.jsx'
-import LoadingScreen     from './components/LoadingScreen.jsx'
-import FallingCars       from './components/FallingCars.jsx'
+import TelemetryStrip      from './components/TelemetryStrip.jsx'
+import TelemetryInspector  from './components/TelemetryInspector.jsx'
+import TwinChart           from './components/TwinChart.jsx'
+import DigitalVsPhysical   from './components/DigitalVsPhysical.jsx'
+import AttackLab           from './components/AttackLab.jsx'
+import IncidentFeed        from './components/IncidentFeed.jsx'
+import FirewallConsole     from './components/FirewallConsole.jsx'
+import BackgroundScene     from './components/BackgroundScene.jsx'
+import LoadingScreen       from './components/LoadingScreen.jsx'
+import FallingCars         from './components/FallingCars.jsx'
 
 const PROFILES = [
   { id: 'idle',           label: 'Idle' },
@@ -51,32 +53,7 @@ const WHITE_GLASS = {
   WebkitBackdropFilter: 'blur(18px) saturate(1.2)',
   border: '1px solid rgba(255, 255, 255, 0.95)',
   borderRadius: '1.5rem',
-  boxShadow: '0 0 0 1px rgba(34, 211, 238, 0.14), 0 0 24px rgba(34, 197, 94, 0.10), 0 12px 36px rgba(0, 0, 0, 0.08)',
-}
-
-// ── Shield + bolt SVG logomark ────────────────────────────────────────────────
-function ShieldBolt({ size = 32 }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 32 32"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M16 2L4 7v9c0 6.6 5.1 12.8 12 14 6.9-1.2 12-7.4 12-14V7L16 2z"
-        fill="rgba(200,240,60,0.18)"
-        stroke="#C8F03C"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M18 8l-6 9h5l-1 7 7-10h-5l1-6z"
-        fill="#C8F03C"
-      />
-    </svg>
-  )
+  boxShadow: '0 0 0 1px rgba(34, 211, 238, 0.14), 0 0 24px rgba(118, 255, 3, 0.10), 0 12px 36px rgba(0, 0, 0, 0.08)',
 }
 
 // ── Debug strip (white glass) ─────────────────────────────────────────────────
@@ -157,7 +134,7 @@ function GlassCard({ children, style }) {
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = 'translateY(-2px)'
         e.currentTarget.style.boxShadow =
-          '0 0 0 1px rgba(34, 211, 238, 0.25), 0 0 28px rgba(34, 197, 94, 0.16), 0 16px 44px rgba(0, 0, 0, 0.12)'
+          '0 0 0 1px rgba(34, 211, 238, 0.25), 0 0 28px rgba(118, 255, 3, 0.16), 0 16px 44px rgba(0, 0, 0, 0.12)'
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = ''
@@ -192,7 +169,7 @@ export default function App() {
 
   return (
     <>
-      {/* ── Loading Screen (shown once on page load) ── */}
+      {/* ── Loading Screen ── */}
       {loading && <LoadingScreen onComplete={() => setLoading(false)} />}
 
       {/* ── Fixed background ── */}
@@ -201,7 +178,7 @@ export default function App() {
       {/* ── Falling F1 Cars ── */}
       <FallingCars />
 
-      {/* ── Scroll container with ample bottom padding for docked console ── */}
+      {/* ── Scroll container ── */}
       <div style={{
         position: 'relative',
         zIndex: 1,
@@ -217,7 +194,7 @@ export default function App() {
           gap: '1.5rem',
         }}>
 
-          {/* ── Header ── */}
+          {/* ── Header with Logo image + Recolored Wordmark ── */}
           <header style={{
             display: 'flex',
             alignItems: 'center',
@@ -225,11 +202,8 @@ export default function App() {
             gap: '1rem',
             flexWrap: 'wrap',
           }}>
-            {/* Logomark + wordmark + taglines */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <ShieldBolt size={42} />
-              <div>
-                <h1 style={{
+            <div>
+              <h1 style={{
                   fontFamily: "'Russo One', 'Teko', sans-serif",
                   fontSize: 'clamp(2.5rem, 5vw, 3.6rem)',
                   fontWeight: 400,
@@ -241,9 +215,10 @@ export default function App() {
                   display: 'inline-block',
                   transform: 'skewX(-8deg)',
                   textShadow:
-                    '0 0 12px rgba(255,255,255,0.85), 0 0 24px rgba(34,211,238,0.5), 0 0 38px rgba(34,197,94,0.35)',
+                    '0 0 12px rgba(255,255,255,0.85), 0 0 24px rgba(118,255,3,0.5), 0 0 38px rgba(34,197,94,0.35)',
                 }}>
-                  AXIOMWALL
+                  <span>AXIOM</span>
+                  <span style={{ color: '#76FF03' }}>WALL</span>
                 </h1>
                 <p style={{ margin: '0.2rem 0 0', fontSize: '0.84rem', color: '#E2E8F0', lineHeight: 1.3, textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
                   Physics checks what passwords can't.
@@ -252,7 +227,6 @@ export default function App() {
                   Simulated data · Thermal time-scale ×20
                 </p>
               </div>
-            </div>
 
             {/* Running indicator */}
             <div
@@ -270,8 +244,8 @@ export default function App() {
             >
               <span style={{
                 width: '9px', height: '9px', borderRadius: '50%',
-                background: running ? '#22C55E' : '#94A3B8',
-                boxShadow: running ? '0 0 10px #22C55E' : 'none',
+                background: running ? '#76FF03' : '#94A3B8',
+                boxShadow: running ? '0 0 10px #76FF03' : 'none',
                 transition: 'background 0.3s, box-shadow 0.3s',
               }} />
               <span style={{ fontSize: '0.82rem', fontWeight: 600, color: running ? '#F1F5F9' : '#94A3B8' }}>
@@ -280,7 +254,7 @@ export default function App() {
             </div>
           </header>
 
-          {/* ── Truth Split Hero — glossy white glass card ── */}
+          {/* ── Truth Split Hero ── */}
           <GlassCard>
             <DigitalVsPhysical />
           </GlassCard>
@@ -293,15 +267,14 @@ export default function App() {
             <AttackLab onActiveChange={setActiveAttackId} />
           </GlassCard>
 
-          {/* ── Twin chart (sitting DIRECTLY after Attack Lab) ── */}
-          <GlassCard>
-            <TwinChart />
-          </GlassCard>
+          {/* ── Telemetry Inspector (below Attack Lab, above Chart) ── */}
+          <TelemetryInspector />
 
-          {/* ── Incident Feed ── */}
-          <GlassCard>
-            <IncidentFeed activeAttackLabel={activeAttackLabel} />
-          </GlassCard>
+          {/* ── Twin chart ── */}
+          <TwinChart />
+
+          {/* ── Incident Feed (deep indigo-navy gradient) ── */}
+          <IncidentFeed activeAttackLabel={activeAttackLabel} />
 
           {/* ── Profile (mode selector) ── */}
           <section>
@@ -320,7 +293,7 @@ export default function App() {
                       fontSize: '0.875rem',
                       fontWeight: 700,
                       border: active
-                        ? '1.5px solid #16A34A'
+                        ? '1.5px solid #76FF03'
                         : '1px solid rgba(255,255,255,0.7)',
                       background: active
                         ? '#F0FDF4'
@@ -331,7 +304,7 @@ export default function App() {
                       cursor: 'pointer',
                       transition: 'all 0.18s ease',
                       boxShadow: active
-                        ? '0 0 16px rgba(34,197,94,0.3), 0 2px 6px rgba(0,0,0,0.06)'
+                        ? '0 0 16px rgba(118,255,3,0.35), 0 2px 6px rgba(0,0,0,0.06)'
                         : '0 2px 6px rgba(0,0,0,0.05)',
                     }}
                   >

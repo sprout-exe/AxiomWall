@@ -1,8 +1,7 @@
 ﻿// src/components/DigitalVsPhysical.jsx
-// Truth-Split hero panel inside white glass card.
-// LEFT tile: "DIGITAL" — floating white tile with lime/green neon glow border.
-// RIGHT tile: "PHYSICS" — floating white tile with state-reactive neon glow border.
-// Below: Speedometer-style RiskGauge (dark panel) + WHY panel with high contrast.
+// Truth-Split hero panel.
+// Floating tiles with response-reactive neon glow borders.
+// Speedometer gauge with recovering status line, Cell Stress bar, and status pill.
 
 import { useRef, useEffect, useState } from 'react'
 import useStore from '../store/useStore.js'
@@ -67,14 +66,15 @@ function ReasonCard({ reason }) {
 }
 
 export default function DigitalVsPhysical() {
-  const result   = useStore((s) => s.result)
-  const response = result?.response ?? 'ALLOW'
-  const risk     = result?.risk ?? 0
-  const reasons  = result?.reasons ?? []
+  const result      = useStore((s) => s.result)
+  const stress      = useStore((s) => s.stress) || 0
+  const response    = result?.response ?? 'ALLOW'
+  const risk        = result?.risk ?? 0
+  const instantRisk = result?.instantRisk ?? risk
+  const reasons     = result?.reasons ?? []
 
   const physics = PHYSICS_STATE[response] ?? PHYSICS_STATE.ALLOW
 
-  // Pulse animation on verdict change
   const prevResponse = useRef(response)
   const [pulse, setPulse] = useState(false)
 
@@ -86,6 +86,8 @@ export default function DigitalVsPhysical() {
       return () => clearTimeout(t)
     }
   }, [response])
+
+  const isRecovering = instantRisk < risk
 
   return (
     <div className="w-full max-w-full overflow-hidden p-6 sm:p-8" style={{ background: 'transparent' }}>
@@ -108,7 +110,6 @@ export default function DigitalVsPhysical() {
           >
             Digital
           </p>
-          {/* Big lime checkmark badge */}
           <div
             className="flex h-14 w-14 items-center justify-center rounded-2xl"
             style={{ background: 'rgba(200,240,60,0.20)' }}
@@ -149,7 +150,6 @@ export default function DigitalVsPhysical() {
           >
             Physics
           </p>
-          {/* State icon */}
           <div
             className="flex h-14 w-14 items-center justify-center rounded-2xl transition-colors duration-300"
             style={{ background: physics.bg }}
@@ -189,19 +189,86 @@ export default function DigitalVsPhysical() {
           borderTop: '1px solid #E2E8F0',
         }}
       >
-        {/* Speedometer Gauge in dark panel */}
-        <div className="flex flex-col items-center justify-center mx-auto md:mx-0">
+        {/* Speedometer Gauge column */}
+        <div className="flex flex-col items-center justify-center mx-auto md:mx-0 w-full max-w-[280px]">
           <RiskGauge risk={risk} response={response} />
+
+          {/* Threat cleared recovering line */}
+          {isRecovering && (
+            <p className="text-[11px] font-mono text-slate-500 mt-2 text-center animate-pulse">
+              Threat cleared. Risk recovering...
+            </p>
+          )}
+
+          {/* ── Cell Stress Bar (model estimate) ── */}
+          <div
+            className="w-full mt-4 p-3 rounded-xl bg-slate-50 border border-slate-200 select-none"
+            title="Accumulated stress from physically implausible conditions (model estimate, not a measurement)."
+          >
+            <div className="flex items-center justify-between mb-1.5 text-xs">
+              <span className="font-bold text-slate-800">
+                Cell stress <span className="font-normal text-slate-500 text-[10px]">(model estimate)</span>
+              </span>
+              <span className="font-mono font-bold text-slate-700">{stress.toFixed(1)} %</span>
+            </div>
+            <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
+              <div
+                style={{
+                  width: `${stress}%`,
+                  height: '100%',
+                  background:
+                    stress >= 75
+                      ? 'linear-gradient(90deg, #F59E0B, #EF4444)'
+                      : stress >= 35
+                      ? 'linear-gradient(90deg, #22C55E, #F59E0B)'
+                      : '#22C55E',
+                  transition: 'width 600ms ease-out, background 600ms ease-out',
+                }}
+              />
+            </div>
+          </div>
         </div>
 
         {/* WHY panel */}
         <div className="flex flex-col gap-3 min-w-0">
-          <p
-            className="text-xs uppercase tracking-widest text-slate-500 m-0 font-medium"
-            style={{ fontFamily: "'Russo One', 'Teko', sans-serif" }}
-          >
-            Why — Rule Violations
-          </p>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <p
+              className="text-xs uppercase tracking-widest text-slate-500 m-0 font-medium"
+              style={{ fontFamily: "'Russo One', 'Teko', sans-serif" }}
+            >
+              Why — Rule Violations
+            </p>
+
+            {/* ── Status Pill: Neon Green floating when no anomalies, switches to response color when incidents ── */}
+            {reasons.length === 0 ? (
+              <span
+                className="status-pill-floating inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold"
+                style={{
+                  background: '#ECFDF5',
+                  border: '1.5px solid #10B981',
+                  color: '#065F46',
+                  boxShadow: '0 0 14px rgba(16, 185, 129, 0.45)',
+                }}
+              >
+                <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_6px_#10B981]" />
+                NO ANOMALIES
+              </span>
+            ) : (
+              <span
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold"
+                style={{
+                  background: physics.bg,
+                  border: `1.5px solid ${physics.color}`,
+                  color: physics.color,
+                  boxShadow: `0 0 12px ${physics.glow}`,
+                }}
+              >
+                <span className="h-2 w-2 rounded-full" style={{ background: physics.color }} />
+                {response} DETECTED
+              </span>
+            )}
+          </div>
+
           {reasons.length === 0 ? (
             <div className="rounded-xl p-4 bg-slate-50 border border-slate-200 text-xs text-slate-500 italic">
               No anomalies detected. Telemetry matches physics digital twin expectations.
@@ -213,7 +280,6 @@ export default function DigitalVsPhysical() {
       </div>
 
       <style>{`
-        /* Gentle float (translateY 0 to -4px, 6s ease-in-out loop) */
         .digital-tile {
           animation: floatTileA 6s ease-in-out infinite;
           will-change: transform;
@@ -226,6 +292,17 @@ export default function DigitalVsPhysical() {
         .digital-tile:hover, .physics-tile:hover {
           transform: translateY(-6px) !important;
           box-shadow: 0 12px 30px rgba(0,0,0,0.1) !important;
+        }
+
+        /* Status pill floating motion (translateY 0 to -4px, 6s loop) */
+        .status-pill-floating {
+          animation: floatPill 6s ease-in-out infinite;
+          will-change: transform;
+        }
+
+        @keyframes floatPill {
+          0%, 100% { transform: translateY(0px); }
+          50%      { transform: translateY(-4px); }
         }
 
         @keyframes floatTileA {
@@ -245,7 +322,7 @@ export default function DigitalVsPhysical() {
         }
 
         @media (prefers-reduced-motion: reduce) {
-          .digital-tile, .physics-tile {
+          .digital-tile, .physics-tile, .status-pill-floating {
             animation: none !important;
             transform: none !important;
           }

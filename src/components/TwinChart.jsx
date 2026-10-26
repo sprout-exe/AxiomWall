@@ -2,7 +2,7 @@
 // Recharts line chart of measured vs twin-predicted temperature (or voltage).
 // Measured trace in solid green #16A34A with soft gradient area fill.
 // Twin prediction in lavender #A78BFA dashed, ±1.5 tolerance band.
-// White card, light grid lines, dark axis text, rounded tooltip.
+// Soft mint-to-white gradient (#ECFDF5 to #F0FDF4) card, thin green border and subtle green glow.
 
 import { useState } from 'react'
 import {
@@ -82,8 +82,8 @@ const CustomTooltip = ({ active, payload, label, unit }) => {
       className="rounded-xl px-3 py-2 text-xs space-y-1"
       style={{
         background: '#FFFFFF',
-        border: '1px solid #E2E8F0',
-        boxShadow: '0 8px 20px rgba(0,0,0,0.08)',
+        border: '1px solid #A7F3D0',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.08), 0 0 12px rgba(34, 197, 94, 0.15)',
         color: '#1E293B',
       }}
     >
@@ -107,31 +107,38 @@ export default function TwinChart() {
   const data = buildChartData(history, view)
 
   return (
-    <div className="p-6">
+    <div
+      className="p-6 rounded-3xl"
+      style={{
+        background: 'linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 100%)',
+        border: '1px solid rgba(34, 197, 94, 0.28)',
+        boxShadow: '0 0 20px rgba(34, 197, 94, 0.12), 0 8px 32px rgba(0, 0, 0, 0.05)',
+      }}
+    >
       {/* Header + toggle */}
       <div className="mb-4 flex items-center justify-between flex-wrap gap-2">
         <div>
           <h2
-            className="text-sm uppercase tracking-wider text-slate-800 m-0"
+            className="text-sm uppercase tracking-wider text-slate-900 m-0"
             style={{ fontFamily: "'Russo One', 'Teko', sans-serif" }}
           >
             Digital Twin Verification — {view === 'voltage' ? 'Voltage' : 'Temperature'}
           </h2>
-          <p className="text-xs text-slate-500 m-0 mt-0.5">
-            Physical sensors vs real-time digital twin prediction
+          <p className="text-xs text-emerald-800 m-0 mt-0.5 font-mono font-medium">
+            Thermal time-scale x20 (demo)
           </p>
         </div>
-        <div className="flex gap-1 rounded-xl bg-slate-100 p-1 border border-slate-200">
+        <div className="flex gap-1 rounded-xl bg-white/80 p-1 border border-emerald-200 shadow-sm backdrop-blur">
           {MODES.map((m) => (
             <button
               key={m.id}
               type="button"
               onClick={() => setView(m.id)}
               className={[
-                'rounded-lg px-3 py-1 text-xs font-semibold transition-all',
+                'rounded-lg px-3 py-1 text-xs font-semibold transition-all cursor-pointer',
                 view === m.id
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-800',
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900',
               ].join(' ')}
             >
               {m.label}
@@ -141,22 +148,22 @@ export default function TwinChart() {
       </div>
 
       {/* Legend */}
-      <div className="mb-4 flex flex-wrap gap-4 text-xs font-medium text-slate-600">
+      <div className="mb-4 flex flex-wrap gap-4 text-xs font-medium text-slate-700">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-1 w-5 rounded" style={{ backgroundColor: '#16A34A' }} />
+          <span className="inline-block h-1.5 w-5 rounded" style={{ backgroundColor: '#16A34A' }} />
           Measured (Sensors)
         </span>
         <span className="flex items-center gap-1.5">
           <span
-            className="inline-block h-1 w-5 rounded"
+            className="inline-block h-1.5 w-5 rounded"
             style={{
               backgroundImage: 'repeating-linear-gradient(90deg, #A78BFA 0px, #A78BFA 4px, transparent 4px, transparent 6px)',
             }}
           />
-          Digital Twin Prediction
+          Twin Expectation
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-5 rounded opacity-40" style={{ backgroundColor: '#A78BFA' }} />
+          <span className="inline-block h-3.5 w-5 rounded opacity-40" style={{ backgroundColor: '#A78BFA' }} />
           ±{BAND_K} {unit} Tolerance
         </span>
       </div>
@@ -166,23 +173,23 @@ export default function TwinChart() {
         <ComposedChart data={data} margin={{ top: 6, right: 12, bottom: 0, left: -6 }}>
           <defs>
             <linearGradient id="measuredGreenFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#16A34A" stopOpacity="0.22" />
+              <stop offset="0%" stopColor="#16A34A" stopOpacity="0.25" />
               <stop offset="100%" stopColor="#16A34A" stopOpacity="0.01" />
             </linearGradient>
           </defs>
 
-          <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#D1FAE5" vertical={false} />
           <XAxis
             dataKey="t"
-            tick={{ fontSize: 11, fill: '#334155', fontWeight: 500 }}
+            tick={{ fontSize: 11, fill: '#1E293B', fontWeight: 600 }}
             tickLine={false}
-            axisLine={{ stroke: '#CBD5E1' }}
-            label={{ value: 'time (s)', position: 'insideBottomRight', offset: -4, fontSize: 10, fill: '#475569' }}
+            axisLine={{ stroke: '#A7F3D0' }}
+            label={{ value: 'time (s)', position: 'insideBottomRight', offset: -4, fontSize: 10, fill: '#334155' }}
           />
           <YAxis
-            tick={{ fontSize: 11, fill: '#334155', fontWeight: 500 }}
+            tick={{ fontSize: 11, fill: '#1E293B', fontWeight: 600 }}
             tickLine={false}
-            axisLine={{ stroke: '#CBD5E1' }}
+            axisLine={{ stroke: '#A7F3D0' }}
             width={38}
             tickFormatter={(v) => Math.round(v).toString()}
             domain={view === 'voltage' ? yDomain(data, 1.5, 3) : yDomain(data, 2, 8)}
@@ -195,7 +202,7 @@ export default function TwinChart() {
             dataKey="bandHi"
             stroke="none"
             fill="#A78BFA"
-            fillOpacity={0.14}
+            fillOpacity={0.16}
             isAnimationActive={false}
             legendType="none"
             name="band"
@@ -205,7 +212,7 @@ export default function TwinChart() {
           <Area
             dataKey="bandLo"
             stroke="none"
-            fill="#FFFFFF"
+            fill="#ECFDF5"
             fillOpacity={1}
             isAnimationActive={false}
             legendType="none"
@@ -241,7 +248,7 @@ export default function TwinChart() {
           <Line
             dataKey="measured"
             stroke="#16A34A"
-            strokeWidth={2.2}
+            strokeWidth={2.4}
             dot={false}
             isAnimationActive={false}
             name="Measured"

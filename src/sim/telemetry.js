@@ -1,12 +1,11 @@
-// src/sim/telemetry.js
+﻿// src/sim/telemetry.js
 // Simulated "true" battery telemetry at 1 Hz.
 // Uses the same physics as the twin but with small Gaussian noise added.
 // Emits: { t, V, I, T, SoC, P, speed, digitalValid: true }
 
 import { ocv } from '../engine/twin.js'
 
-// ── Model constants (mirrored from twin, deliberately NOT imported
-//    so the true plant is independent of the twin module) ──────────
+// ── Model constants (mirrored from twin) ──────────────────────────
 const RINT  = 0.03;
 const CTH   = 20000;
 const RTH   = 0.05;
@@ -27,28 +26,21 @@ function randn() {
 function noise(sigma) { return sigma * randn(); }
 
 // ── Profile generators ────────────────────────────────────────────
-// Each returns { I, speed } for the current tick (t in seconds).
-
 function idleProfile() {
-  // I ≈ 0  (tiny accessory load, uniform [-0.5, 0.5] A)
   return { I: (Math.random() - 0.5), speed: 0 };
 }
 
 function chargeProfile() {
-  // Constant CC charge at –30 A
   return { I: -30, speed: 0 };
 }
 
 function driveProfile() {
-  // Discharge 20–60 A, speed 15–35 km/h – slow random walk
-  // Internally stateful via closure variable held by the generator
   const I     = 20 + Math.random() * 40;    // 20–60 A
   const speed = 15 + Math.random() * 20;    // 15–35 km/h
   return { I, speed };
 }
 
 function fastChargeRampProfile(t0, now) {
-  // Ramps from –20 A to –55 A over 30 s then holds at –55 A
   const elapsed = now - t0;
   const frac = Math.min(elapsed / 30, 1);
   const I = -(20 + frac * 35);              // –20 → –55 A
@@ -56,53 +48,47 @@ function fastChargeRampProfile(t0, now) {
 }
 
 // ── Telemetry generator factory ───────────────────────────────────
-/**
- * Create a live telemetry emitter.
- *
- * @param {object}   opts
- * @param {'idle'|'charge'|'drive'|'fastChargeRamp'} opts.mode
- * @param {function} opts.onSample  – callback(sample) called every second
- * @returns {{ stop: function }} controller
- */
 export function createTelemetry({ mode = 'idle', onSample }) {
-  // True plant state – starts at T=31, SoC=64 as specified
   let trueState = { T: 31, SoC: 64 };
   let t = 0;
-  const t0 = 0;   // ramp reference for fastChargeRamp
-
+  const t0 = 0;
   let handle = null;
+  let override = null;
 
   function tick() {
-    // 1. Determine raw current from profile
     let raw;
-    switch (mode) {
-      case 'charge':         raw = chargeProfile();            break;
-      case 'drive':          raw = driveProfile();             break;
-      case 'fastChargeRamp': raw = fastChargeRampProfile(t0, t); break;
-      default:               raw = idleProfile();              break;
+    if (override) {
+      raw = typeof override === 'function' ? override(t) : override;
+    } else {
+      switch (mode) {
+        case 'charge':         raw = chargeProfile();            break;
+        case 'drive':          raw = driveProfile();             break;
+        case 'fastChargeRamp': raw = fastChargeRampProfile(t0, t); break;
+        default:               raw = idleProfile();              break;
+      }
     }
 
     const { I: I_true, speed } = raw;
 
-    // 2. Advance true plant state (same equations as twin)
+    // Advance true plant state
     const { T, SoC } = trueState;
-    const V_true  = ocv(SoC) - I_true * RINT;
-    const dTdt    = (I_true * I_true * RINT - (T - TAMB) / RTH) / CTH * TC;
-    const T_next  = T + dTdt * 1;          // dt = 1 s
+    const V_true   = ocv(SoC) - I_true * RINT;
+    const dTdt     = (I_true * I_true * RINT - (T - TAMB) / RTH) / CTH * TC;
+    const T_next   = T + dTdt * 1;
     const SoC_next = SoC - (I_true * 1 / (3600 * QNOM)) * 100;
     trueState = {
       T:   T_next,
       SoC: Math.max(0, Math.min(100, SoC_next)),
     };
 
-    // 3. Add measurement noise
+    // Add measurement noise
     const sample = {
       t,
       V:            V_true            + noise(NOISE.V),
       I:            I_true            + noise(NOISE.I),
       T:            T_next            + noise(NOISE.T),
       SoC:          SoC_next          + noise(NOISE.SoC),
-      P:            (V_true * I_true) / 1000,   // kW, no noise on power
+      P:            (V_true * I_true) / 1000,
       speed,
       digitalValid: true,
     };
@@ -114,7 +100,7 @@ export function createTelemetry({ mode = 'idle', onSample }) {
   function start() {
     if (handle !== null) return;
     handle = setInterval(tick, 1000);
-    tick();   // emit first sample immediately
+    tick();
   }
 
   function stop() {
@@ -123,8 +109,11 @@ export function createTelemetry({ mode = 'idle', onSample }) {
 
   function setMode(newMode) {
     mode = newMode;
-    if (newMode === 'fastChargeRamp') { /* t0 already 0, elapsed from t */ }
   }
 
-  return { start, stop, setMode };
+  function setOverride(newOverride) {
+    override = newOverride;
+  }
+
+  return { start, stop, setMode, setOverride };
 }

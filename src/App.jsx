@@ -1,17 +1,19 @@
-// src/App.jsx
+﻿// src/App.jsx
 // AxiomWall — main shell.
 // Layout (top-to-bottom):
 //   1. BackgroundScene (fixed, z=0)
-//   2. Header (shield+bolt logomark, running indicator)
-//   3. DigitalVsPhysical (Truth Split hero — glass card)
-//   4. Debug strip
-//   5. AttackLab (glass card)
-//   6. FirewallConsole (glass card)
-//   7. IncidentFeed (glass card)
-//   8. Profile (mode selector) + stream controls
-//   9. TelemetryStrip
-//  10. TwinChart
-//  11. Footer
+//   2. FallingCars (fixed, z=0, pointer-events none)
+//   3. Header (shield+bolt logomark, running indicator)
+//   4. DigitalVsPhysical (Truth Split hero — glossy white glass card)
+//   5. Debug strip (glossy white glass)
+//   6. AttackLab (glossy white glass card)
+//   7. TwinChart (MOVED HERE directly after Attack Lab — glossy white card)
+//   8. IncidentFeed (glossy white glass card)
+//   9. Profile (mode selector — glossy white buttons)
+//  10. Stream controls (Start / Stop / Reset)
+//  11. TelemetryStrip (glossy white chips)
+//  12. FirewallConsole (sticky/fixed docked at bottom)
+//  13. Footer
 
 import { useEffect, useState } from 'react'
 import useStore from './store/useStore.js'
@@ -23,6 +25,7 @@ import IncidentFeed      from './components/IncidentFeed.jsx'
 import FirewallConsole   from './components/FirewallConsole.jsx'
 import BackgroundScene   from './components/BackgroundScene.jsx'
 import LoadingScreen     from './components/LoadingScreen.jsx'
+import FallingCars       from './components/FallingCars.jsx'
 
 const PROFILES = [
   { id: 'idle',           label: 'Idle' },
@@ -41,15 +44,14 @@ const ATTACK_LABELS = {
   legit_ramp:    'Legit Fast-Charge Ramp',
 }
 
-// ── Shared glass card style ───────────────────────────────────────────────────
-// white at ~5 % alpha, backdrop-blur, 1px white/10 border, green glow, hover lift
-const GLASS = {
-  background: 'rgba(255,255,255,0.05)',
-  backdropFilter: 'blur(16px) saturate(1.4)',
-  WebkitBackdropFilter: 'blur(16px) saturate(1.4)',
-  border: '1px solid rgba(255,255,255,0.10)',
+// ── Shared glossy white glass card style ──────────────────────────────────────
+const WHITE_GLASS = {
+  background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 247, 251, 0.92) 100%)',
+  backdropFilter: 'blur(18px) saturate(1.2)',
+  WebkitBackdropFilter: 'blur(18px) saturate(1.2)',
+  border: '1px solid rgba(255, 255, 255, 0.95)',
   borderRadius: '1.5rem',
-  boxShadow: '0 0 0 1px rgba(34,197,94,0.06), 0 8px 32px rgba(0,0,0,0.45)',
+  boxShadow: '0 0 0 1px rgba(34, 211, 238, 0.14), 0 0 24px rgba(34, 197, 94, 0.10), 0 12px 36px rgba(0, 0, 0, 0.08)',
 }
 
 // ── Shield + bolt SVG logomark ────────────────────────────────────────────────
@@ -62,15 +64,13 @@ function ShieldBolt({ size = 32 }) {
       fill="none"
       aria-hidden="true"
     >
-      {/* Shield */}
       <path
         d="M16 2L4 7v9c0 6.6 5.1 12.8 12 14 6.9-1.2 12-7.4 12-14V7L16 2z"
-        fill="rgba(200,240,60,0.15)"
+        fill="rgba(200,240,60,0.18)"
         stroke="#C8F03C"
-        strokeWidth="1.5"
+        strokeWidth="1.6"
         strokeLinejoin="round"
       />
-      {/* Bolt */}
       <path
         d="M18 8l-6 9h5l-1 7 7-10h-5l1-6z"
         fill="#C8F03C"
@@ -79,7 +79,7 @@ function ShieldBolt({ size = 32 }) {
   )
 }
 
-// ── Debug strip ───────────────────────────────────────────────────────────────
+// ── Debug strip (white glass) ─────────────────────────────────────────────────
 function DebugStrip() {
   const mode   = useStore((s) => s.mode)
   const sample = useStore((s) => s.sample)
@@ -96,31 +96,31 @@ function DebugStrip() {
   return (
     <div
       style={{
-        ...GLASS,
-        borderRadius: '0.75rem',
-        padding: '0.5rem 1rem',
+        ...WHITE_GLASS,
+        borderRadius: '0.85rem',
+        padding: '0.6rem 1.2rem',
         fontFamily: "'JetBrains Mono', monospace",
-        fontSize: '0.7rem',
+        fontSize: '0.72rem',
         display: 'flex',
         flexWrap: 'wrap',
         gap: '0 1.5rem',
-        color: '#9CA3AF',
+        color: '#475569',
         lineHeight: 1.8,
       }}
     >
-      <span><span style={{ color: '#6B7280' }}>mode: </span><span style={{ color: '#C8F03C', fontWeight: 700 }}>{mode}</span></span>
-      <span><span style={{ color: '#6B7280' }}>I: </span><span style={{ color: '#E5E7EB' }}>{I} A</span></span>
-      <span><span style={{ color: '#6B7280' }}>speed: </span><span style={{ color: '#E5E7EB' }}>{speed} km/h</span></span>
-      <span><span style={{ color: '#6B7280' }}>risk: </span><span style={{ color: '#E5E7EB' }}>{result?.risk ?? 0}</span></span>
+      <span><span style={{ color: '#64748B' }}>mode: </span><span style={{ color: '#16A34A', fontWeight: 700 }}>{mode}</span></span>
+      <span><span style={{ color: '#64748B' }}>I: </span><span style={{ color: '#101114', fontWeight: 700 }}>{I} A</span></span>
+      <span><span style={{ color: '#64748B' }}>speed: </span><span style={{ color: '#101114', fontWeight: 700 }}>{speed} km/h</span></span>
+      <span><span style={{ color: '#64748B' }}>risk: </span><span style={{ color: '#101114', fontWeight: 700 }}>{result?.risk ?? 0}</span></span>
       <span>
-        <span style={{ color: '#6B7280' }}>response: </span>
-        <span style={{ color: result?.response === 'ALLOW' ? '#22C55E' : '#EF4444', fontWeight: 700 }}>
+        <span style={{ color: '#64748B' }}>response: </span>
+        <span style={{ color: result?.response === 'ALLOW' ? '#16A34A' : '#DC2626', fontWeight: 800 }}>
           {result?.response ?? 'ALLOW'}{precheck}
         </span>
       </span>
       <span style={{ flexBasis: '100%' }}>
-        <span style={{ color: '#6B7280' }}>rules: </span>
-        <span style={{ color: '#D1D5DB' }}>{failingRules}</span>
+        <span style={{ color: '#64748B' }}>rules: </span>
+        <span style={{ color: '#1E293B', fontWeight: 600 }}>{failingRules}</span>
       </span>
     </div>
   )
@@ -132,29 +132,36 @@ function SectionLabel({ children }) {
     <p style={{
       margin: '0 0 0.5rem',
       fontFamily: "'Russo One', 'Teko', sans-serif",
-      fontSize: '0.8rem',
+      fontSize: '0.82rem',
       fontWeight: 400,
       textTransform: 'uppercase',
       letterSpacing: '0.08em',
-      color: '#9CA3AF',
+      color: '#FFFFFF',
+      textShadow: '0 2px 8px rgba(0,0,0,0.7)',
     }}>
       {children}
     </p>
   )
 }
 
-// ── Glass section wrapper — wraps child component in a glass card ──────────────
+// ── Glass section wrapper ─────────────────────────────────────────────────────
 function GlassCard({ children, style }) {
   return (
     <div
-      style={{ ...GLASS, ...style, overflow: 'hidden', transition: 'transform 0.2s, box-shadow 0.2s' }}
-      onMouseEnter={e => {
-        e.currentTarget.style.transform = 'translateY(-2px)'
-        e.currentTarget.style.boxShadow = '0 0 0 1px rgba(34,197,94,0.12), 0 12px 40px rgba(0,0,0,0.55)'
+      style={{
+        ...WHITE_GLASS,
+        ...style,
+        overflow: 'hidden',
+        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
       }}
-      onMouseLeave={e => {
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-2px)'
+        e.currentTarget.style.boxShadow =
+          '0 0 0 1px rgba(34, 211, 238, 0.25), 0 0 28px rgba(34, 197, 94, 0.16), 0 16px 44px rgba(0, 0, 0, 0.12)'
+      }}
+      onMouseLeave={(e) => {
         e.currentTarget.style.transform = ''
-        e.currentTarget.style.boxShadow = GLASS.boxShadow
+        e.currentTarget.style.boxShadow = WHITE_GLASS.boxShadow
       }}
     >
       {children}
@@ -174,7 +181,7 @@ export default function App() {
   const [activeAttackId, setActiveAttackId] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { start() }, [])  // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { start() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleMode(id) {
     setMode(id)
@@ -188,15 +195,18 @@ export default function App() {
       {/* ── Loading Screen (shown once on page load) ── */}
       {loading && <LoadingScreen onComplete={() => setLoading(false)} />}
 
-      {/* ── Fixed background (z=0, no layout impact) ── */}
+      {/* ── Fixed background ── */}
       <BackgroundScene />
 
-      {/* ── Scroll container ── */}
+      {/* ── Falling F1 Cars ── */}
+      <FallingCars />
+
+      {/* ── Scroll container with ample bottom padding for docked console ── */}
       <div style={{
         position: 'relative',
         zIndex: 1,
         minHeight: '100vh',
-        padding: '2rem 1rem 5rem',
+        padding: '2rem 1rem 8rem',
         overflowX: 'hidden',
       }}>
         <div style={{
@@ -217,11 +227,11 @@ export default function App() {
           }}>
             {/* Logomark + wordmark + taglines */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <ShieldBolt size={40} />
+              <ShieldBolt size={42} />
               <div>
                 <h1 style={{
                   fontFamily: "'Russo One', 'Teko', sans-serif",
-                  fontSize: 'clamp(2.5rem, 5vw, 3.5rem)',
+                  fontSize: 'clamp(2.5rem, 5vw, 3.6rem)',
                   fontWeight: 400,
                   color: '#FFFFFF',
                   textTransform: 'uppercase',
@@ -231,39 +241,47 @@ export default function App() {
                   display: 'inline-block',
                   transform: 'skewX(-8deg)',
                   textShadow:
-                    '0 0 10px rgba(255,255,255,0.85), 0 0 20px rgba(34,211,238,0.5), 0 0 35px rgba(34,197,94,0.35)',
+                    '0 0 12px rgba(255,255,255,0.85), 0 0 24px rgba(34,211,238,0.5), 0 0 38px rgba(34,197,94,0.35)',
                 }}>
                   AXIOMWALL
                 </h1>
-                <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: '#9CA3AF', lineHeight: 1.3 }}>
+                <p style={{ margin: '0.2rem 0 0', fontSize: '0.84rem', color: '#E2E8F0', lineHeight: 1.3, textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
                   Physics checks what passwords can't.
                 </p>
-                <p style={{ margin: '0.1rem 0 0', fontSize: '0.65rem', color: '#4B5563' }}>
+                <p style={{ margin: '0.1rem 0 0', fontSize: '0.68rem', color: '#CBD5E1', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
                   Simulated data · Thermal time-scale ×20
                 </p>
               </div>
             </div>
 
             {/* Running indicator */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                flexShrink: 0,
+                background: 'rgba(5,7,11,0.65)',
+                padding: '0.4rem 0.85rem',
+                borderRadius: '9999px',
+                border: '1px solid rgba(255,255,255,0.15)',
+                backdropFilter: 'blur(8px)',
+              }}
+            >
               <span style={{
                 width: '9px', height: '9px', borderRadius: '50%',
-                background: running ? '#22C55E' : '#374151',
-                boxShadow: running ? '0 0 8px #22C55E' : 'none',
+                background: running ? '#22C55E' : '#94A3B8',
+                boxShadow: running ? '0 0 10px #22C55E' : 'none',
                 transition: 'background 0.3s, box-shadow 0.3s',
               }} />
-              <span style={{ fontSize: '0.8rem', color: running ? '#9CA3AF' : '#4B5563' }}>
+              <span style={{ fontSize: '0.82rem', fontWeight: 600, color: running ? '#F1F5F9' : '#94A3B8' }}>
                 {running ? 'Streaming' : 'Stopped'}
               </span>
             </div>
           </header>
 
-          {/* ── Truth Split Hero — glass card with higher opacity for readability ── */}
-          <GlassCard style={{
-            background: 'rgba(7,11,18,0.90)',
-            backdropFilter: 'blur(18px)',
-            WebkitBackdropFilter: 'blur(18px)',
-          }}>
+          {/* ── Truth Split Hero — glossy white glass card ── */}
+          <GlassCard>
             <DigitalVsPhysical />
           </GlassCard>
 
@@ -275,9 +293,9 @@ export default function App() {
             <AttackLab onActiveChange={setActiveAttackId} />
           </GlassCard>
 
-          {/* ── Firewall Console ── */}
+          {/* ── Twin chart (sitting DIRECTLY after Attack Lab) ── */}
           <GlassCard>
-            <FirewallConsole />
+            <TwinChart />
           </GlassCard>
 
           {/* ── Incident Feed ── */}
@@ -288,7 +306,7 @@ export default function App() {
           {/* ── Profile (mode selector) ── */}
           <section>
             <SectionLabel>Profile</SectionLabel>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem' }}>
               {PROFILES.map((p) => {
                 const active = mode === p.id
                 return (
@@ -297,22 +315,24 @@ export default function App() {
                     type="button"
                     onClick={() => handleMode(p.id)}
                     style={{
-                      borderRadius: '0.75rem',
-                      padding: '0.5rem 1rem',
+                      borderRadius: '0.85rem',
+                      padding: '0.55rem 1.15rem',
                       fontSize: '0.875rem',
-                      fontWeight: 500,
+                      fontWeight: 700,
                       border: active
-                        ? '1px solid rgba(200,240,60,0.45)'
-                        : '1px solid rgba(255,255,255,0.09)',
+                        ? '1.5px solid #16A34A'
+                        : '1px solid rgba(255,255,255,0.7)',
                       background: active
-                        ? 'rgba(200,240,60,0.12)'
-                        : 'rgba(255,255,255,0.05)',
-                      backdropFilter: 'blur(8px)',
-                      WebkitBackdropFilter: 'blur(8px)',
-                      color: active ? '#C8F03C' : '#D1D5DB',
+                        ? '#F0FDF4'
+                        : 'rgba(255,255,255,0.92)',
+                      backdropFilter: 'blur(12px)',
+                      WebkitBackdropFilter: 'blur(12px)',
+                      color: active ? '#15803D' : '#1E293B',
                       cursor: 'pointer',
-                      transition: 'all 0.18s',
-                      boxShadow: active ? '0 0 10px rgba(200,240,60,0.15)' : 'none',
+                      transition: 'all 0.18s ease',
+                      boxShadow: active
+                        ? '0 0 16px rgba(34,197,94,0.3), 0 2px 6px rgba(0,0,0,0.06)'
+                        : '0 2px 6px rgba(0,0,0,0.05)',
                     }}
                   >
                     {p.label}
@@ -323,27 +343,28 @@ export default function App() {
           </section>
 
           {/* ── Stream controls ── */}
-          <section style={{ display: 'flex', gap: '0.5rem' }}>
+          <section style={{ display: 'flex', gap: '0.6rem' }}>
             {running ? (
               <button type="button" onClick={stop} style={{
-                borderRadius: '0.75rem', padding: '0.5rem 1.25rem',
-                fontSize: '0.875rem', fontWeight: 600,
+                borderRadius: '0.85rem', padding: '0.55rem 1.4rem',
+                fontSize: '0.875rem', fontWeight: 700,
                 background: '#EF4444', color: '#fff', border: 'none', cursor: 'pointer',
-                boxShadow: '0 0 14px rgba(239,68,68,0.40)',
+                boxShadow: '0 0 16px rgba(239,68,68,0.45)',
               }}>Stop</button>
             ) : (
               <button type="button" onClick={start} style={{
-                borderRadius: '0.75rem', padding: '0.5rem 1.25rem',
-                fontSize: '0.875rem', fontWeight: 600,
-                background: '#22C55E', color: '#fff', border: 'none', cursor: 'pointer',
-                boxShadow: '0 0 14px rgba(34,197,94,0.40)',
+                borderRadius: '0.85rem', padding: '0.55rem 1.4rem',
+                fontSize: '0.875rem', fontWeight: 700,
+                background: '#16A34A', color: '#fff', border: 'none', cursor: 'pointer',
+                boxShadow: '0 0 16px rgba(22,163,74,0.45)',
               }}>Start</button>
             )}
             <button type="button" onClick={reset} style={{
-              borderRadius: '0.75rem', padding: '0.5rem 1.25rem',
-              fontSize: '0.875rem', fontWeight: 600,
-              background: 'rgba(255,255,255,0.06)', color: '#D1D5DB',
-              border: '1px solid rgba(255,255,255,0.10)', cursor: 'pointer',
+              borderRadius: '0.85rem', padding: '0.55rem 1.4rem',
+              fontSize: '0.875rem', fontWeight: 700,
+              background: 'rgba(255,255,255,0.92)', color: '#1E293B',
+              border: '1px solid rgba(255,255,255,0.9)', cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
             }}>Reset</button>
           </section>
 
@@ -353,14 +374,12 @@ export default function App() {
             <TelemetryStrip />
           </section>
 
-          {/* ── Twin chart ── */}
-          <GlassCard>
-            <TwinChart />
-          </GlassCard>
+          {/* ── Sticky / Docked Firewall Console ── */}
+          <FirewallConsole />
 
           {/* ── Footer ── */}
           <footer style={{
-            borderTop: '1px solid rgba(255,255,255,0.06)',
+            borderTop: '1px solid rgba(255,255,255,0.15)',
             paddingTop: '1.5rem',
             display: 'flex',
             flexWrap: 'wrap',
@@ -368,10 +387,10 @@ export default function App() {
             alignItems: 'center',
             gap: '0.5rem',
           }}>
-            <p style={{ margin: 0, fontSize: '0.68rem', color: '#4B5563' }}>
+            <p style={{ margin: 0, fontSize: '0.72rem', color: '#CBD5E1', textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>
               Background imagery: stock photo, for demonstration only.
             </p>
-            <p style={{ margin: 0, fontSize: '0.68rem', color: '#374151' }}>
+            <p style={{ margin: 0, fontSize: '0.72rem', color: '#E2E8F0', fontWeight: 600, textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>
               AxiomWall — Battery Physics Firewall Demo
             </p>
           </footer>

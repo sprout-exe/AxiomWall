@@ -1,13 +1,11 @@
-// src/components/TelemetryStrip.jsx
+﻿// src/components/TelemetryStrip.jsx
 // Six measurement chips: Voltage, Current, Temperature, SoC, Power, Speed.
-// Status dots are coloured by the chip's own residual from the detection result.
-// Green  → no residual violation for this channel
-// Amber  → residual severity 0–0.5
-// Red    → residual severity > 0.5
+// White glossy glass card style: #FFFFFF at ~92% with subtle gradient to #F4F7FB,
+// 1px white border, soft shadow with faint neon glow, dark ink numbers #101114,
+// secondary text #475569. Status dots colored by residual severity.
 
 import useStore from '../store/useStore.js'
 
-// Rule names that map to each chip key
 const CHIP_RULES = {
   V:     ['twin_v', 'limit_voltage', 'power_consistency'],
   I:     ['limit_charge_current', 'limit_drive_current', 'kinetic_interlock'],
@@ -27,8 +25,8 @@ function severityForChip(key, result) {
 }
 
 function dotColorFromSeverity(sev) {
-  if (sev <= 0)   return '#22C55E'
-  if (sev < 0.5)  return '#F59E0B'
+  if (sev <= 0)  return '#16A34A'
+  if (sev < 0.5) return '#F59E0B'
   return '#EF4444'
 }
 
@@ -45,26 +43,29 @@ function Chip({ config, sample, result }) {
   const raw   = sample?.[config.key]
   const value = raw != null ? raw.toFixed(config.fixed) : '—'
   const sev   = severityForChip(config.key, result)
-  const dotColor = raw != null ? dotColorFromSeverity(sev) : '#374151'
+  const dotColor = raw != null ? dotColorFromSeverity(sev) : '#94A3B8'
 
   return (
     <div
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: '0.25rem',
-        borderRadius: '1rem',
+        gap: '0.35rem',
+        borderRadius: '1.25rem',
         padding: '1rem 1.25rem',
-        minWidth: '130px',
-        background: 'rgba(10, 14, 24, 0.72)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        border: '1px solid rgba(255,255,255,0.07)',
+        minWidth: '135px',
+        flex: '1 1 140px',
+        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 247, 251, 0.92) 100%)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        border: '1px solid rgba(255, 255, 255, 0.95)',
+        boxShadow: '0 0 0 1px rgba(34, 211, 238, 0.12), 0 0 16px rgba(34, 197, 94, 0.08), 0 8px 24px rgba(0, 0, 0, 0.06)',
+        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
       }}
     >
       {/* Header row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-        <span style={{ fontSize: '0.65rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#9CA3AF' }}>
+        <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#475569' }}>
           {config.label}
         </span>
         <span
@@ -74,7 +75,7 @@ function Chip({ config, sample, result }) {
             borderRadius: '50%',
             flexShrink: 0,
             background: dotColor,
-            boxShadow: sev > 0 ? `0 0 6px ${dotColor}88` : 'none',
+            boxShadow: sev > 0 ? `0 0 8px ${dotColor}` : 'none',
           }}
         />
       </div>
@@ -83,16 +84,17 @@ function Chip({ config, sample, result }) {
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem' }}>
         <span
           style={{
-            fontSize: '1.75rem',
+            fontSize: '1.85rem',
             fontWeight: 400,
             lineHeight: 1,
             fontFamily: "'Russo One', 'Teko', sans-serif",
-            color: '#F0F2F5',
+            color: '#101114',
+            letterSpacing: '0.02em',
           }}
         >
           {value}
         </span>
-        <span style={{ fontSize: '0.8rem', color: '#6B7280' }}>{config.unit}</span>
+        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>{config.unit}</span>
       </div>
     </div>
   )
@@ -103,9 +105,20 @@ export default function TelemetryStrip() {
   const result = useStore((s) => s.result)
 
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
-      {CHIPS.map((cfg) => (
-        <Chip key={cfg.key} config={cfg} sample={sample} result={result} />
+    <div
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '0.75rem',
+      }}
+    >
+      {CHIPS.map((config) => (
+        <Chip
+          key={config.key}
+          config={config}
+          sample={sample}
+          result={result}
+        />
       ))}
     </div>
   )

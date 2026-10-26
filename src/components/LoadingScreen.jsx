@@ -1,8 +1,8 @@
-// src/components/LoadingScreen.jsx
-// Presentational full-screen loader shown once per page load.
-// Features: AXIOMWALL title, moving toy EV with glowing headlight on dashed track,
-// counting percentage number in Russo One, thin neon progress bar, and dynamic status messages.
-// Runs ~2.5s then fades out in 300ms. Runs completely independently of simulator engine.
+﻿// src/components/LoadingScreen.jsx
+// Cyber-garage loader: animated perspective road grid scrolling toward viewer,
+// AXIOMWALL racing title, detailed toy EV/F1 car with light cone, spinning wheels,
+// speed lines and green spark trail, big glowing percentage, segmented neon progress bar,
+// rotating status text, 100% arrival hop + bright flash sweep.
 
 import { useEffect, useState, useRef } from 'react'
 
@@ -13,6 +13,8 @@ const isReducedMotion = () =>
 
 export default function LoadingScreen({ onComplete }) {
   const [progress, setProgress] = useState(() => (isReducedMotion() ? 100 : 0))
+  const [isArrived, setIsArrived] = useState(false)
+  const [flash, setFlash] = useState(false)
   const [fadingOut, setFadingOut] = useState(false)
   const [statusText, setStatusText] = useState(() =>
     isReducedMotion() ? 'Arming rules...' : 'Booting digital twin...'
@@ -22,7 +24,6 @@ export default function LoadingScreen({ onComplete }) {
 
   useEffect(() => {
     if (isReducedMotion()) {
-      // Reduced motion: skip animation, show loader for 600 ms with number only
       const timer = setTimeout(() => {
         setFadingOut(true)
         setTimeout(() => {
@@ -32,33 +33,37 @@ export default function LoadingScreen({ onComplete }) {
       return () => clearTimeout(timer)
     }
 
-    // Normal motion: 2.5 second animation using requestAnimationFrame
-    const DURATION = 2500
+    // ~2.5s travel + 350ms hop/flash + 300ms fade = ~3.15s total
+    const DRIVE_DURATION = 2500
 
     const step = (timestamp) => {
       if (!startTimeRef.current) startTimeRef.current = timestamp
       const elapsed = timestamp - startTimeRef.current
-      const pct = Math.min(100, Math.round((elapsed / DURATION) * 100))
+      const pct = Math.min(100, Math.round((elapsed / DRIVE_DURATION) * 100))
 
       setProgress(pct)
 
-      if (pct < 30) {
+      if (pct < 35) {
         setStatusText('Booting digital twin...')
-      } else if (pct < 70) {
+      } else if (pct < 75) {
         setStatusText('Loading physics engine...')
       } else {
         setStatusText('Arming rules...')
       }
 
-      if (elapsed < DURATION) {
+      if (elapsed < DRIVE_DURATION) {
         animFrameRef.current = requestAnimationFrame(step)
       } else {
-        // Complete! Fade out 300ms then unmount
         setProgress(100)
-        setFadingOut(true)
+        setIsArrived(true)
+        setFlash(true)
+        // Flash sweep + hop, then fade out
         setTimeout(() => {
-          onComplete?.()
-        }, 300)
+          setFadingOut(true)
+          setTimeout(() => {
+            onComplete?.()
+          }, 350)
+        }, 400)
       }
     }
 
@@ -70,7 +75,7 @@ export default function LoadingScreen({ onComplete }) {
   }, [onComplete])
 
   const trackRef = useRef(null)
-  const [trackWidth, setTrackWidth] = useState(300)
+  const [trackWidth, setTrackWidth] = useState(360)
 
   useEffect(() => {
     const updateWidth = () => {
@@ -83,8 +88,11 @@ export default function LoadingScreen({ onComplete }) {
     return () => window.removeEventListener('resize', updateWidth)
   }, [])
 
-  const CAR_WIDTH = 36
-  const carTranslateX = (progress / 100) * Math.max(0, trackWidth - CAR_WIDTH)
+  const CAR_OFFSET = 64
+  const carTranslateX = (progress / 100) * Math.max(0, trackWidth - CAR_OFFSET)
+
+  const NUM_SEGMENTS = 16
+  const filledSegments = Math.round((progress / 100) * NUM_SEGMENTS)
 
   return (
     <div
@@ -97,185 +105,423 @@ export default function LoadingScreen({ onComplete }) {
         position: 'fixed',
         inset: 0,
         zIndex: 99999,
-        background: '#05070B',
+        background: '#04060A',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         padding: '1.5rem',
         opacity: fadingOut ? 0 : 1,
-        transition: 'opacity 300ms ease-out',
+        transition: 'opacity 350ms ease-out',
         pointerEvents: fadingOut ? 'none' : 'auto',
+        overflow: 'hidden',
       }}
     >
-      {/* Background ambient neon glow */}
+      {/* ── Perspective Road Grid (scrolling towards viewer) ── */}
       <div
         aria-hidden="true"
         style={{
           position: 'absolute',
-          width: '450px',
-          height: '450px',
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(34,211,238,0.08) 0%, rgba(34,197,94,0.05) 45%, transparent 70%)',
+          bottom: 0,
+          left: '-20%',
+          right: '-20%',
+          height: '50%',
+          perspective: '350px',
+          overflow: 'hidden',
+          pointerEvents: 'none',
+          opacity: 0.6,
+        }}
+      >
+        <div
+          className="cyber-grid"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            transform: 'rotateX(62deg)',
+            transformOrigin: 'bottom center',
+            backgroundSize: '40px 40px',
+            backgroundImage: `
+              linear-gradient(to right, rgba(34, 211, 238, 0.22) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(34, 197, 94, 0.22) 1px, transparent 1px)
+            `,
+          }}
+        />
+        {/* Horizon fade */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(to bottom, #04060A 0%, transparent 60%)',
+          }}
+        />
+      </div>
+
+      {/* Cyber garage neon ceiling glows */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          top: '-15%',
+          width: '600px',
+          height: '400px',
+          background: 'radial-gradient(ellipse at center, rgba(34,211,238,0.12) 0%, rgba(34,197,94,0.06) 50%, transparent 75%)',
           pointerEvents: 'none',
         }}
       />
 
-      {/* ── Title in Russo One with neon glow ── */}
-      <h1
-        style={{
-          fontFamily: "'Russo One', 'Teko', sans-serif",
-          fontSize: 'clamp(2.4rem, 6vw, 3.8rem)',
-          color: '#FFFFFF',
-          textTransform: 'uppercase',
-          letterSpacing: '0.04em',
-          margin: '0 0 0.25rem',
-          transform: 'skewX(-8deg)',
-          textAlign: 'center',
-          textShadow:
-            '0 0 12px rgba(255,255,255,0.85), 0 0 24px rgba(34,211,238,0.5), 0 0 40px rgba(34,197,94,0.35)',
-        }}
-      >
-        AXIOMWALL
-      </h1>
-      <p style={{ margin: '0 0 2.5rem', fontSize: '0.82rem', color: '#9CA3AF', textAlign: 'center' }}>
-        Physics checks what passwords can't.
-      </p>
+      {/* Flash Sweep Overlay on 100% */}
+      {flash && (
+        <div
+          aria-hidden="true"
+          className="flash-sweep"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.7) 50%, transparent 100%)',
+            pointerEvents: 'none',
+            zIndex: 10,
+          }}
+        />
+      )}
 
-      {/* ── Big percentage number in Russo One ── */}
-      <div
-        style={{
-          fontFamily: "'Russo One', 'Teko', sans-serif",
-          fontSize: 'clamp(3.5rem, 9vw, 5rem)',
-          fontWeight: 400,
-          color: '#FFFFFF',
-          lineHeight: 1,
-          marginBottom: '2rem',
-          textAlign: 'center',
-          textShadow:
-            '0 0 16px rgba(255,255,255,0.75), 0 0 32px rgba(34,211,238,0.45)',
-        }}
-      >
-        {progress}%
-      </div>
+      {/* Content wrapper */}
+      <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        {/* Title */}
+        <h1
+          style={{
+            fontFamily: "'Russo One', 'Teko', sans-serif",
+            fontSize: 'clamp(2.4rem, 6vw, 4rem)',
+            color: '#FFFFFF',
+            textTransform: 'uppercase',
+            letterSpacing: '0.04em',
+            margin: '0 0 0.25rem',
+            transform: 'skewX(-8deg)',
+            textAlign: 'center',
+            textShadow:
+              '0 0 14px rgba(255,255,255,0.9), 0 0 28px rgba(34,211,238,0.6), 0 0 45px rgba(34,197,94,0.4)',
+          }}
+        >
+          AXIOMWALL
+        </h1>
+        <p
+          style={{
+            margin: '0 0 2rem',
+            fontSize: '0.85rem',
+            color: '#9CA3AF',
+            textAlign: 'center',
+            letterSpacing: '0.02em',
+          }}
+        >
+          Physics checks what passwords can't.
+        </p>
 
-      {/* ── Horizontal Track & Toy EV Car ── */}
-      <div
-        ref={trackRef}
-        style={{
-          width: '100%',
-          maxWidth: '320px',
-          minWidth: '240px',
-          position: 'relative',
-          marginBottom: '1rem',
-        }}
-      >
-        {/* Car travel area */}
-        <div style={{ height: '24px', position: 'relative', width: '100%' }}>
+        {/* Big percentage number */}
+        <div
+          style={{
+            fontFamily: "'Russo One', 'Teko', sans-serif",
+            fontSize: 'clamp(3.8rem, 9vw, 5.5rem)',
+            fontWeight: 400,
+            color: '#FFFFFF',
+            lineHeight: 1,
+            marginBottom: '1.75rem',
+            textAlign: 'center',
+            textShadow:
+              '0 0 18px rgba(255,255,255,0.8), 0 0 35px rgba(34,211,238,0.5), 0 0 50px rgba(34,197,94,0.35)',
+          }}
+        >
+          {progress}%
+        </div>
+
+        {/* Track & Car Container */}
+        <div
+          ref={trackRef}
+          style={{
+            width: '100%',
+            maxWidth: '380px',
+            minWidth: '260px',
+            position: 'relative',
+            marginBottom: '1.25rem',
+          }}
+        >
+          {/* Car Travel Row */}
+          <div style={{ height: '38px', position: 'relative', width: '100%' }}>
+            <div
+              style={{
+                position: 'absolute',
+                left: 0,
+                bottom: 0,
+                transform: `translateX(${carTranslateX}px)`,
+                willChange: 'transform',
+              }}
+            >
+              {/* Car hop or bounce */}
+              <div className={isArrived ? 'car-hop' : 'car-bounce'}>
+                {/* Detailed Toy EV / F1 Car SVG */}
+                <svg width="86" height="34" viewBox="0 0 86 34" fill="none">
+                  <defs>
+                    {/* Headlight cone projection */}
+                    <linearGradient id="lightCone" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#C8F03C" stopOpacity="0.85" />
+                      <stop offset="25%" stopColor="#22D3EE" stopOpacity="0.4" />
+                      <stop offset="100%" stopColor="#22D3EE" stopOpacity="0" />
+                    </linearGradient>
+
+                    {/* Gradient body */}
+                    <linearGradient id="carBodyGrad" x1="0%" y1="0%" x2="100%" y2="50%">
+                      <stop offset="0%" stopColor="#38BDF8" />
+                      <stop offset="50%" stopColor="#22D3EE" />
+                      <stop offset="100%" stopColor="#22C55E" />
+                    </linearGradient>
+
+                    <linearGradient id="bodyGlint" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.8" />
+                      <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* ── Speed lines above & below ── */}
+                  {!isArrived && (
+                    <g className="speed-lines">
+                      <line x1="12" y1="6" x2="3" y2="6" stroke="#22D3EE" strokeWidth="1" strokeLinecap="round" opacity="0.6" />
+                      <line x1="8" y1="12" x2="0" y2="12" stroke="#C8F03C" strokeWidth="1" strokeLinecap="round" opacity="0.7" />
+                      <line x1="14" y1="28" x2="5" y2="28" stroke="#22D3EE" strokeWidth="1" strokeLinecap="round" opacity="0.5" />
+                    </g>
+                  )}
+
+                  {/* ── Spark leaf trail behind car ── */}
+                  {!isArrived && (
+                    <g className="leaf-trail">
+                      <circle cx="10" cy="18" r="2.2" fill="#C8F03C" className="spark-dot-1" />
+                      <circle cx="5" cy="14" r="1.8" fill="#22C55E" className="spark-dot-2" />
+                      <circle cx="2" cy="20" r="1.5" fill="#22D3EE" className="spark-dot-3" />
+                    </g>
+                  )}
+
+                  {/* ── Headlight light cone ── */}
+                  <polygon points="56,18 86,9 86,27" fill="url(#lightCone)" />
+
+                  {/* ── Rear wing / spoiler ── */}
+                  <rect x="14" y="9" width="3" height="7" rx="1" fill="#0F172A" stroke="#22D3EE" strokeWidth="0.8" />
+                  <rect x="11" y="8" width="7" height="2" rx="0.8" fill="#22D3EE" />
+
+                  {/* ── Chunky body ── */}
+                  <path
+                    d="M 17,23 C 15,23 15,16 17,14 C 19,12 22,11 25,11 C 28,6 32,4 39,4 C 45,4 49,6 51,12 L 55,13 C 58,15 59,18 58,22 C 57,23 55,23 53,23 C 52,19 44,19 43,23 L 31,23 C 30,19 22,19 21,23 Z"
+                    fill="url(#carBodyGrad)"
+                    filter="drop-shadow(0 2px 5px rgba(0,0,0,0.6))"
+                  />
+
+                  {/* Cabin Glint */}
+                  <path
+                    d="M 33 6 C 36 5.2 41 5.2 44 6 C 41 7 36 7 33 6 Z"
+                    fill="url(#bodyGlint)"
+                  />
+
+                  {/* Cockpit Window */}
+                  <path
+                    d="M 29,11 C 31,7.5 35,6.5 39,6.5 C 43,6.5 46,7.5 48,11 L 48,12 L 29,12 Z"
+                    fill="#080E1A"
+                    opacity="0.9"
+                  />
+                  <path d="M 33 7.5 L 36 7.5 L 34 11 L 31 11 Z" fill="#FFFFFF" opacity="0.6" />
+
+                  {/* Glowing headlight bulb */}
+                  <circle
+                    cx="56"
+                    cy="18"
+                    r="2.4"
+                    fill="#C8F03C"
+                    style={{ filter: 'drop-shadow(0 0 5px #C8F03C)' }}
+                  />
+
+                  {/* ── Rear Wheel ── */}
+                  <g className={isArrived ? '' : 'wheel-spin'} style={{ transformOrigin: '26px 23px' }}>
+                    <circle cx="26" cy="23" r="6" fill="#080C14" stroke="#22C55E" strokeWidth="1.2" />
+                    <circle cx="26" cy="23" r="3.5" fill="#1E293B" />
+                    <line x1="22.5" y1="23" x2="29.5" y2="23" stroke="#22D3EE" strokeWidth="1.2" />
+                    <line x1="26" y1="19.5" x2="26" y2="26.5" stroke="#22D3EE" strokeWidth="1.2" />
+                    <circle cx="26" cy="23" r="1.3" fill="#FFFFFF" />
+                  </g>
+
+                  {/* ── Front Wheel ── */}
+                  <g className={isArrived ? '' : 'wheel-spin'} style={{ transformOrigin: '48px 23px' }}>
+                    <circle cx="48" cy="23" r="6" fill="#080C14" stroke="#22C55E" strokeWidth="1.2" />
+                    <circle cx="48" cy="23" r="3.5" fill="#1E293B" />
+                    <line x1="44.5" y1="23" x2="51.5" y2="23" stroke="#22D3EE" strokeWidth="1.2" />
+                    <line x1="48" y1="19.5" x2="48" y2="26.5" stroke="#22D3EE" strokeWidth="1.2" />
+                    <circle cx="48" cy="23" r="1.3" fill="#FFFFFF" />
+                  </g>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          {/* Dashed Road Line */}
           <div
             style={{
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              transform: `translateX(${carTranslateX}px)`,
-              willChange: 'transform',
+              height: '2px',
+              width: '100%',
+              background:
+                'repeating-linear-gradient(90deg, rgba(255,255,255,0.4) 0px, rgba(255,255,255,0.4) 10px, transparent 10px, transparent 20px)',
+              marginBottom: '8px',
+            }}
+          />
+
+          {/* Segmented Neon Progress Bar */}
+          <div
+            style={{
+              display: 'flex',
+              gap: '4px',
+              width: '100%',
+              padding: '2px',
+              background: 'rgba(255,255,255,0.04)',
+              borderRadius: '6px',
+              border: '1px solid rgba(255,255,255,0.08)',
             }}
           >
-            {/* Inline SVG Toy EV */}
-            <svg width={CAR_WIDTH + 18} height={22} viewBox="0 0 54 22" fill="none">
-              <defs>
-                <linearGradient id="headlightBeam" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#22C55E" stopOpacity="0.8" />
-                  <stop offset="40%" stopColor="#22D3EE" stopOpacity="0.4" />
-                  <stop offset="100%" stopColor="#22D3EE" stopOpacity="0" />
-                </linearGradient>
-                <linearGradient id="carBodyGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#0EA5E9" />
-                  <stop offset="60%" stopColor="#22D3EE" />
-                  <stop offset="100%" stopColor="#22C55E" />
-                </linearGradient>
-              </defs>
-
-              {/* Glowing green headlight projection beam */}
-              <polygon points="34,11 53,5 53,17" fill="url(#headlightBeam)" />
-
-              {/* Car body */}
-              <path
-                d="M 4 14 C 4 9 8 5.5 13 5.5 L 20 5.5 C 24 5.5 28 8 32 11 C 34.5 12 34.5 14 33 14 L 4 14 Z"
-                fill="url(#carBodyGrad)"
-              />
-
-              {/* Windshield / cabin glass */}
-              <path
-                d="M 12 7 L 18 7 C 22 7 25 8.5 27.5 11 L 11 11 Z"
-                fill="#05070B"
-                opacity="0.85"
-              />
-
-              {/* Headlight bulb with glow */}
-              <circle
-                cx="33"
-                cy="11.5"
-                r="1.8"
-                fill="#C8F03C"
-                style={{ filter: 'drop-shadow(0 0 3px #C8F03C)' }}
-              />
-
-              {/* Wheels */}
-              <circle cx="10" cy="14" r="3.2" fill="#0B0F17" stroke="#22C55E" strokeWidth="1.2" />
-              <circle cx="10" cy="14" r="1.2" fill="#22D3EE" />
-              <circle cx="27" cy="14" r="3.2" fill="#0B0F17" stroke="#22C55E" strokeWidth="1.2" />
-              <circle cx="27" cy="14" r="1.2" fill="#22D3EE" />
-            </svg>
+            {Array.from({ length: NUM_SEGMENTS }, (_, i) => {
+              const active = i < filledSegments
+              return (
+                <div
+                  key={i}
+                  style={{
+                    flex: 1,
+                    height: '5px',
+                    borderRadius: '2px',
+                    background: active
+                      ? 'linear-gradient(90deg, #22D3EE, #22C55E)'
+                      : 'rgba(255,255,255,0.06)',
+                    boxShadow: active
+                      ? '0 0 6px rgba(34,211,238,0.7), 0 0 10px rgba(34,197,94,0.5)'
+                      : 'none',
+                    transition: 'background 80ms ease, box-shadow 80ms ease',
+                  }}
+                />
+              )
+            })}
           </div>
         </div>
 
-        {/* Dashed road marks */}
-        <div
+        {/* Status text */}
+        <p
           style={{
-            height: '2px',
-            width: '100%',
-            background:
-              'repeating-linear-gradient(90deg, rgba(255,255,255,0.45) 0px, rgba(255,255,255,0.45) 8px, transparent 8px, transparent 18px)',
-            marginBottom: '6px',
-          }}
-        />
-
-        {/* Thin neon progress bar beneath */}
-        <div
-          style={{
-            height: '3px',
-            width: '100%',
-            borderRadius: '2px',
-            background: 'rgba(255,255,255,0.08)',
-            overflow: 'hidden',
+            marginTop: '0.5rem',
+            fontSize: '0.82rem',
+            color: '#6B7280',
+            fontFamily: "'JetBrains Mono', monospace",
+            letterSpacing: '0.04em',
+            minHeight: '1.2rem',
           }}
         >
-          <div
-            style={{
-              height: '100%',
-              width: `${progress}%`,
-              background: 'linear-gradient(90deg, #22D3EE 0%, #22C55E 100%)',
-              boxShadow: '0 0 10px #22D3EE, 0 0 16px #22C55E',
-              transition: 'width 60ms linear',
-            }}
-          />
-        </div>
+          {statusText}
+        </p>
       </div>
 
-      {/* ── Status text that updates at 30% and 70% ── */}
-      <p
-        style={{
-          marginTop: '0.75rem',
-          fontSize: '0.8rem',
-          color: '#6B7280',
-          fontFamily: "'Inter', sans-serif",
-          letterSpacing: '0.04em',
-          minHeight: '1.2rem',
-        }}
-      >
-        {statusText}
-      </p>
+      <style>{`
+        /* Perspective road animation */
+        .cyber-grid {
+          animation: gridScroll 1.2s linear infinite;
+        }
+
+        @keyframes gridScroll {
+          0%   { background-position: 0 0; }
+          100% { background-position: 0 40px; }
+        }
+
+        /* 2px gentle bounce while driving */
+        .car-bounce {
+          animation: carBounce 0.32s ease-in-out infinite;
+          will-change: transform;
+        }
+
+        @keyframes carBounce {
+          0%, 100% { transform: translateY(0px); }
+          50%      { transform: translateY(-2px); }
+        }
+
+        /* Arrival hop */
+        .car-hop {
+          animation: carArrivalHop 0.38s ease-out forwards;
+          will-change: transform;
+        }
+
+        @keyframes carArrivalHop {
+          0%   { transform: translateY(0px) scale(1, 1); }
+          30%  { transform: translateY(-7px) scale(0.95, 1.1); }
+          65%  { transform: translateY(0px) scale(1.05, 0.95); }
+          85%  { transform: translateY(-2px) scale(0.98, 1.02); }
+          100% { transform: translateY(0px) scale(1, 1); }
+        }
+
+        /* Flash sweep across screen */
+        .flash-sweep {
+          animation: flashAcross 0.4s ease-out forwards;
+        }
+
+        @keyframes flashAcross {
+          0%   { transform: translateX(-100%); opacity: 0; }
+          40%  { opacity: 0.9; }
+          100% { transform: translateX(100%); opacity: 0; }
+        }
+
+        /* Fast wheel rotation */
+        .wheel-spin {
+          animation: wheelSpin 0.22s linear infinite;
+          will-change: transform;
+        }
+
+        @keyframes wheelSpin {
+          0%   { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+        /* Speed lines */
+        .speed-lines {
+          animation: speedFlicker 0.25s steps(2) infinite;
+        }
+
+        @keyframes speedFlicker {
+          0%, 100% { opacity: 0.8; }
+          50%      { opacity: 0.3; }
+        }
+
+        /* Spark leaf/dot animations */
+        .spark-dot-1 {
+          animation: sparkDot1 0.5s ease-out infinite;
+        }
+        .spark-dot-2 {
+          animation: sparkDot2 0.6s ease-out infinite 0.15s;
+        }
+        .spark-dot-3 {
+          animation: sparkDot3 0.55s ease-out infinite 0.3s;
+        }
+
+        @keyframes sparkDot1 {
+          0%   { transform: translate(0, 0) scale(1); opacity: 0.9; }
+          100% { transform: translate(-10px, -2px) scale(0.2); opacity: 0; }
+        }
+        @keyframes sparkDot2 {
+          0%   { transform: translate(0, 0) scale(1); opacity: 0.8; }
+          100% { transform: translate(-12px, 3px) scale(0.2); opacity: 0; }
+        }
+        @keyframes sparkDot3 {
+          0%   { transform: translate(0, 0) scale(1); opacity: 0.75; }
+          100% { transform: translate(-8px, -3px) scale(0.2); opacity: 0; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .cyber-grid,
+          .car-bounce,
+          .car-hop,
+          .wheel-spin,
+          .flash-sweep,
+          .speed-lines,
+          [class*="spark-dot"] {
+            animation: none !important;
+            transform: none !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }

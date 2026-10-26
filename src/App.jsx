@@ -1,15 +1,17 @@
 // src/App.jsx
-// PhysGuard — main shell.
+// AxiomWall — main shell.
 // Layout (top-to-bottom):
-//   1. Header
-//   2. DigitalVsPhysical (Truth Split hero)
-//   3. Debug strip (mode, I, speed, failing rules)  ← temporary
-//   4. AttackLab
-//   5. FirewallConsole
-//   6. IncidentFeed
-//   7. Profile (mode selector) + stream controls
-//   8. TelemetryStrip
-//   9. TwinChart
+//   1. BackgroundScene (fixed, z=0)
+//   2. Header (shield+bolt logomark, running indicator)
+//   3. DigitalVsPhysical (Truth Split hero — glass card)
+//   4. Debug strip
+//   5. AttackLab (glass card)
+//   6. FirewallConsole (glass card)
+//   7. IncidentFeed (glass card)
+//   8. Profile (mode selector) + stream controls
+//   9. TelemetryStrip
+//  10. TwinChart
+//  11. Footer
 
 import { useEffect, useState } from 'react'
 import useStore from './store/useStore.js'
@@ -19,6 +21,7 @@ import DigitalVsPhysical from './components/DigitalVsPhysical.jsx'
 import AttackLab         from './components/AttackLab.jsx'
 import IncidentFeed      from './components/IncidentFeed.jsx'
 import FirewallConsole   from './components/FirewallConsole.jsx'
+import BackgroundScene   from './components/BackgroundScene.jsx'
 
 const PROFILES = [
   { id: 'idle',           label: 'Idle' },
@@ -27,7 +30,6 @@ const PROFILES = [
   { id: 'fastChargeRamp', label: 'Fast-charge ramp' },
 ]
 
-// Map attack ID → human label for the incident feed
 const ATTACK_LABELS = {
   freeze_T:      'Temperature Freeze',
   replay:        'Replay',
@@ -36,39 +38,129 @@ const ATTACK_LABELS = {
   malicious_cmd: 'Malicious Command',
   discharge_off: 'DISCHARGE_OFF at Speed',
   legit_ramp:    'Legit Fast-Charge Ramp',
-};
+}
 
-// ── Tiny debug strip ──────────────────────────────────────────────────────────
+// ── Shared glass card style ───────────────────────────────────────────────────
+// white at ~5 % alpha, backdrop-blur, 1px white/10 border, green glow, hover lift
+const GLASS = {
+  background: 'rgba(255,255,255,0.05)',
+  backdropFilter: 'blur(16px) saturate(1.4)',
+  WebkitBackdropFilter: 'blur(16px) saturate(1.4)',
+  border: '1px solid rgba(255,255,255,0.10)',
+  borderRadius: '1.5rem',
+  boxShadow: '0 0 0 1px rgba(34,197,94,0.06), 0 8px 32px rgba(0,0,0,0.45)',
+}
+
+// ── Shield + bolt SVG logomark ────────────────────────────────────────────────
+function ShieldBolt({ size = 32 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      fill="none"
+      aria-hidden="true"
+    >
+      {/* Shield */}
+      <path
+        d="M16 2L4 7v9c0 6.6 5.1 12.8 12 14 6.9-1.2 12-7.4 12-14V7L16 2z"
+        fill="rgba(200,240,60,0.15)"
+        stroke="#C8F03C"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      {/* Bolt */}
+      <path
+        d="M18 8l-6 9h5l-1 7 7-10h-5l1-6z"
+        fill="#C8F03C"
+      />
+    </svg>
+  )
+}
+
+// ── Debug strip ───────────────────────────────────────────────────────────────
 function DebugStrip() {
-  const mode    = useStore((s) => s.mode);
-  const sample  = useStore((s) => s.sample);
-  const result  = useStore((s) => s.result);
+  const mode   = useStore((s) => s.mode)
+  const sample = useStore((s) => s.sample)
+  const result = useStore((s) => s.result)
 
-  const I     = sample?.I?.toFixed(1)     ?? '—';
-  const speed = sample?.speed?.toFixed(1) ?? '—';
-  const precheck = result?.precheck ? ' ⚡PRE-CHECK' : '';
+  const I     = sample?.I?.toFixed(1)     ?? '—'
+  const speed = sample?.speed?.toFixed(1) ?? '—'
+  const precheck = result?.precheck ? ' ⚡PRE-CHECK' : ''
 
   const failingRules = result?.reasons
     ?.map(r => `${r.rule}:${(r.severity * 100).toFixed(0)}%`)
-    .join('  ') ?? '—';
+    .join('  ') ?? 'none'
 
   return (
     <div
-      className="rounded-xl px-4 py-2 font-mono text-xs flex flex-wrap gap-x-6 gap-y-1"
-      style={{ background: 'rgba(0,0,0,0.6)', color: '#6B7280', border: '1px solid rgba(255,255,255,0.06)' }}
+      style={{
+        ...GLASS,
+        borderRadius: '0.75rem',
+        padding: '0.5rem 1rem',
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: '0.7rem',
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '0 1.5rem',
+        color: '#9CA3AF',
+        lineHeight: 1.8,
+      }}
     >
-      <span><span style={{ color: '#9CA3AF' }}>mode:</span> <span style={{ color: '#C8F03C' }}>{mode}</span></span>
-      <span><span style={{ color: '#9CA3AF' }}>I:</span> {I} A</span>
-      <span><span style={{ color: '#9CA3AF' }}>speed:</span> {speed} km/h</span>
-      <span><span style={{ color: '#9CA3AF' }}>risk:</span> {result?.risk ?? 0}</span>
-      <span><span style={{ color: '#9CA3AF' }}>response:</span> <span style={{ color: result?.response === 'ALLOW' ? '#22C55E' : '#EF4444' }}>{result?.response ?? 'ALLOW'}{precheck}</span></span>
-      <span style={{ color: '#4B5563', flexBasis: '100%' }}>
-        <span style={{ color: '#9CA3AF' }}>rules:</span> {failingRules}
+      <span><span style={{ color: '#6B7280' }}>mode: </span><span style={{ color: '#C8F03C', fontWeight: 700 }}>{mode}</span></span>
+      <span><span style={{ color: '#6B7280' }}>I: </span><span style={{ color: '#E5E7EB' }}>{I} A</span></span>
+      <span><span style={{ color: '#6B7280' }}>speed: </span><span style={{ color: '#E5E7EB' }}>{speed} km/h</span></span>
+      <span><span style={{ color: '#6B7280' }}>risk: </span><span style={{ color: '#E5E7EB' }}>{result?.risk ?? 0}</span></span>
+      <span>
+        <span style={{ color: '#6B7280' }}>response: </span>
+        <span style={{ color: result?.response === 'ALLOW' ? '#22C55E' : '#EF4444', fontWeight: 700 }}>
+          {result?.response ?? 'ALLOW'}{precheck}
+        </span>
+      </span>
+      <span style={{ flexBasis: '100%' }}>
+        <span style={{ color: '#6B7280' }}>rules: </span>
+        <span style={{ color: '#D1D5DB' }}>{failingRules}</span>
       </span>
     </div>
-  );
+  )
 }
 
+// ── Section label ─────────────────────────────────────────────────────────────
+function SectionLabel({ children }) {
+  return (
+    <p style={{
+      margin: '0 0 0.5rem',
+      fontSize: '0.65rem',
+      fontWeight: 600,
+      textTransform: 'uppercase',
+      letterSpacing: '0.12em',
+      color: '#6B7280',
+    }}>
+      {children}
+    </p>
+  )
+}
+
+// ── Glass section wrapper — wraps child component in a glass card ──────────────
+function GlassCard({ children, style }) {
+  return (
+    <div
+      style={{ ...GLASS, ...style, overflow: 'hidden', transition: 'transform 0.2s, box-shadow 0.2s' }}
+      onMouseEnter={e => {
+        e.currentTarget.style.transform = 'translateY(-2px)'
+        e.currentTarget.style.boxShadow = '0 0 0 1px rgba(34,197,94,0.12), 0 12px 40px rgba(0,0,0,0.55)'
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.transform = ''
+        e.currentTarget.style.boxShadow = GLASS.boxShadow
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
+// ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
   const mode    = useStore((s) => s.mode)
   const running = useStore((s) => s.running)
@@ -77,10 +169,8 @@ export default function App() {
   const reset   = useStore((s) => s.reset)
   const setMode = useStore((s) => s.setMode)
 
-  // Track active attack ID so IncidentFeed knows the name
   const [activeAttackId, setActiveAttackId] = useState(null)
 
-  // Auto-start streaming on mount
   useEffect(() => { start() }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleMode(id) {
@@ -88,135 +178,196 @@ export default function App() {
     if (!running) start()
   }
 
-  const activeAttackLabel = activeAttackId ? (ATTACK_LABELS[activeAttackId] ?? activeAttackId) : null;
+  const activeAttackLabel = activeAttackId ? (ATTACK_LABELS[activeAttackId] ?? activeAttackId) : null
 
   return (
-    <div className="min-h-screen bg-canvas px-4 py-8 font-sans">
-      <div className="mx-auto max-w-5xl space-y-6">
+    <>
+      {/* ── Fixed background (z=0, no layout impact) ── */}
+      <BackgroundScene />
 
-        {/* ── Header ── */}
-        <header className="flex items-end justify-between">
-          <div>
-            <h1
-              className="text-4xl font-bold tracking-tight"
-              style={{ fontFamily: "'Sora', 'Inter', sans-serif", color: '#C8F03C' }}
-            >
-              PhysGuard
-            </h1>
-            <p className="mt-1 text-sm text-gray-500">
-              Physics checks what passwords can't.
-            </p>
-            <p className="mt-0.5 text-xs" style={{ color: '#4B5563' }}>
-              Simulated data. Thermal time-scale ×20.
-            </p>
-          </div>
+      {/* ── Scroll container ── */}
+      <div style={{
+        position: 'relative',
+        zIndex: 1,
+        minHeight: '100vh',
+        padding: '2rem 1rem 5rem',
+        overflowX: 'hidden',
+      }}>
+        <div style={{
+          maxWidth: '64rem',
+          margin: '0 auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.5rem',
+        }}>
 
-          {/* Running indicator */}
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <span
-              className={[
-                'h-2.5 w-2.5 rounded-full',
-                running ? 'bg-allow animate-pulse' : 'bg-gray-300',
-              ].join(' ')}
-            />
-            {running ? 'Streaming' : 'Stopped'}
-          </div>
-        </header>
+          {/* ── Header ── */}
+          <header style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '1rem',
+            flexWrap: 'wrap',
+          }}>
+            {/* Logomark + wordmark + taglines */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <ShieldBolt size={40} />
+              <div>
+                <h1 style={{
+                  fontFamily: "'Sora', 'Inter', sans-serif",
+                  fontSize: '2.25rem',
+                  fontWeight: 800,
+                  color: '#C8F03C',
+                  margin: 0,
+                  letterSpacing: '-0.025em',
+                  lineHeight: 1.05,
+                  textShadow: '0 0 30px rgba(200,240,60,0.3)',
+                }}>
+                  AxiomWall
+                </h1>
+                <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: '#9CA3AF', lineHeight: 1.3 }}>
+                  Physics checks what passwords can't.
+                </p>
+                <p style={{ margin: '0.1rem 0 0', fontSize: '0.65rem', color: '#4B5563' }}>
+                  Simulated data · Thermal time-scale ×20
+                </p>
+              </div>
+            </div>
 
-        {/* ── Truth Split Hero ── */}
-        <section>
-          <DigitalVsPhysical />
-        </section>
+            {/* Running indicator */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+              <span style={{
+                width: '9px', height: '9px', borderRadius: '50%',
+                background: running ? '#22C55E' : '#374151',
+                boxShadow: running ? '0 0 8px #22C55E' : 'none',
+                transition: 'background 0.3s, box-shadow 0.3s',
+              }} />
+              <span style={{ fontSize: '0.8rem', color: running ? '#9CA3AF' : '#4B5563' }}>
+                {running ? 'Streaming' : 'Stopped'}
+              </span>
+            </div>
+          </header>
 
-        {/* ── Debug strip (temporary) ── */}
-        <section>
+          {/* ── Truth Split Hero — glass card with higher opacity for readability ── */}
+          <GlassCard style={{
+            background: 'rgba(7,11,18,0.90)',
+            backdropFilter: 'blur(18px)',
+            WebkitBackdropFilter: 'blur(18px)',
+          }}>
+            <DigitalVsPhysical />
+          </GlassCard>
+
+          {/* ── Debug strip ── */}
           <DebugStrip />
-        </section>
 
-        {/* ── Attack Lab ── */}
-        <section>
-          <AttackLab onActiveChange={setActiveAttackId} />
-        </section>
+          {/* ── Attack Lab ── */}
+          <GlassCard>
+            <AttackLab onActiveChange={setActiveAttackId} />
+          </GlassCard>
 
-        {/* ── Firewall Console ── */}
-        <section>
-          <FirewallConsole />
-        </section>
+          {/* ── Firewall Console ── */}
+          <GlassCard>
+            <FirewallConsole />
+          </GlassCard>
 
-        {/* ── Incident Feed ── */}
-        <section>
-          <IncidentFeed activeAttackLabel={activeAttackLabel} />
-        </section>
+          {/* ── Incident Feed ── */}
+          <GlassCard>
+            <IncidentFeed activeAttackLabel={activeAttackLabel} />
+          </GlassCard>
 
-        {/* ── Profile (mode selector) ── */}
-        <section>
-          <p className="mb-2 text-xs font-medium uppercase tracking-widest text-gray-400">
-            Profile
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {PROFILES.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => handleMode(p.id)}
-                className={[
-                  'rounded-xl px-4 py-2 text-sm font-medium transition-all',
-                  mode === p.id
-                    ? 'text-white shadow'
-                    : 'bg-white text-gray-600 shadow-sm hover:bg-gray-50',
-                ].join(' ')}
-                style={mode === p.id ? { background: '#1a1b1e', color: '#C8F03C' } : {}}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </section>
+          {/* ── Profile (mode selector) ── */}
+          <section>
+            <SectionLabel>Profile</SectionLabel>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              {PROFILES.map((p) => {
+                const active = mode === p.id
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => handleMode(p.id)}
+                    style={{
+                      borderRadius: '0.75rem',
+                      padding: '0.5rem 1rem',
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
+                      border: active
+                        ? '1px solid rgba(200,240,60,0.45)'
+                        : '1px solid rgba(255,255,255,0.09)',
+                      background: active
+                        ? 'rgba(200,240,60,0.12)'
+                        : 'rgba(255,255,255,0.05)',
+                      backdropFilter: 'blur(8px)',
+                      WebkitBackdropFilter: 'blur(8px)',
+                      color: active ? '#C8F03C' : '#D1D5DB',
+                      cursor: 'pointer',
+                      transition: 'all 0.18s',
+                      boxShadow: active ? '0 0 10px rgba(200,240,60,0.15)' : 'none',
+                    }}
+                  >
+                    {p.label}
+                  </button>
+                )
+              })}
+            </div>
+          </section>
 
-        {/* ── Stream controls ── */}
-        <section className="flex gap-2">
-          {running ? (
-            <button
-              type="button"
-              onClick={stop}
-              className="rounded-xl px-5 py-2 text-sm font-semibold text-white shadow hover:opacity-90 transition-opacity"
-              style={{ background: '#EF4444' }}
-            >
-              Stop
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={start}
-              className="rounded-xl px-5 py-2 text-sm font-semibold text-white shadow hover:opacity-90 transition-opacity"
-              style={{ background: '#22C55E' }}
-            >
-              Start
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={reset}
-            className="rounded-xl bg-white px-5 py-2 text-sm font-semibold text-gray-600 shadow-sm hover:bg-gray-50 transition-colors"
-          >
-            Reset
-          </button>
-        </section>
+          {/* ── Stream controls ── */}
+          <section style={{ display: 'flex', gap: '0.5rem' }}>
+            {running ? (
+              <button type="button" onClick={stop} style={{
+                borderRadius: '0.75rem', padding: '0.5rem 1.25rem',
+                fontSize: '0.875rem', fontWeight: 600,
+                background: '#EF4444', color: '#fff', border: 'none', cursor: 'pointer',
+                boxShadow: '0 0 14px rgba(239,68,68,0.40)',
+              }}>Stop</button>
+            ) : (
+              <button type="button" onClick={start} style={{
+                borderRadius: '0.75rem', padding: '0.5rem 1.25rem',
+                fontSize: '0.875rem', fontWeight: 600,
+                background: '#22C55E', color: '#fff', border: 'none', cursor: 'pointer',
+                boxShadow: '0 0 14px rgba(34,197,94,0.40)',
+              }}>Start</button>
+            )}
+            <button type="button" onClick={reset} style={{
+              borderRadius: '0.75rem', padding: '0.5rem 1.25rem',
+              fontSize: '0.875rem', fontWeight: 600,
+              background: 'rgba(255,255,255,0.06)', color: '#D1D5DB',
+              border: '1px solid rgba(255,255,255,0.10)', cursor: 'pointer',
+            }}>Reset</button>
+          </section>
 
-        {/* ── Telemetry chips ── */}
-        <section>
-          <p className="mb-2 text-xs font-medium uppercase tracking-widest text-gray-400">
-            Live Telemetry
-          </p>
-          <TelemetryStrip />
-        </section>
+          {/* ── Telemetry chips ── */}
+          <section>
+            <SectionLabel>Live Telemetry</SectionLabel>
+            <TelemetryStrip />
+          </section>
 
-        {/* ── Twin chart ── */}
-        <section>
-          <TwinChart />
-        </section>
+          {/* ── Twin chart ── */}
+          <GlassCard>
+            <TwinChart />
+          </GlassCard>
 
+          {/* ── Footer ── */}
+          <footer style={{
+            borderTop: '1px solid rgba(255,255,255,0.06)',
+            paddingTop: '1.5rem',
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '0.5rem',
+          }}>
+            <p style={{ margin: 0, fontSize: '0.68rem', color: '#4B5563' }}>
+              Background imagery: stock photos, for demonstration only.
+            </p>
+            <p style={{ margin: 0, fontSize: '0.68rem', color: '#374151' }}>
+              AxiomWall — Battery Physics Firewall Demo
+            </p>
+          </footer>
+
+        </div>
       </div>
-    </div>
+    </>
   )
 }

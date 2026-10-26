@@ -27,9 +27,9 @@ function severityForChip(key, result) {
 }
 
 function dotColorFromSeverity(sev) {
-  if (sev <= 0)   return 'bg-allow'
-  if (sev < 0.5)  return 'bg-warn'
-  return 'bg-block'
+  if (sev <= 0)   return '#22C55E'
+  if (sev < 0.5)  return '#F59E0B'
+  return '#EF4444'
 }
 
 const CHIPS = [
@@ -42,30 +42,57 @@ const CHIPS = [
 ]
 
 function Chip({ config, sample, result }) {
-  const raw     = sample?.[config.key]
-  const value   = raw != null ? raw.toFixed(config.fixed) : '—'
-  const sev     = severityForChip(config.key, result)
-  const dotCls  = raw != null ? dotColorFromSeverity(sev) : 'bg-gray-300'
+  const raw   = sample?.[config.key]
+  const value = raw != null ? raw.toFixed(config.fixed) : '—'
+  const sev   = severityForChip(config.key, result)
+  const dotColor = raw != null ? dotColorFromSeverity(sev) : '#374151'
 
   return (
-    <div className="flex flex-col gap-1 rounded-2xl bg-white px-5 py-4 shadow-sm min-w-[130px]">
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.25rem',
+        borderRadius: '1rem',
+        padding: '1rem 1.25rem',
+        minWidth: '130px',
+        background: 'rgba(10, 14, 24, 0.72)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        border: '1px solid rgba(255,255,255,0.07)',
+      }}
+    >
       {/* Header row */}
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium uppercase tracking-widest text-gray-400">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+        <span style={{ fontSize: '0.65rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#9CA3AF' }}>
           {config.label}
         </span>
-        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${dotCls}`} />
+        <span
+          style={{
+            width: '10px',
+            height: '10px',
+            borderRadius: '50%',
+            flexShrink: 0,
+            background: dotColor,
+            boxShadow: sev > 0 ? `0 0 6px ${dotColor}88` : 'none',
+          }}
+        />
       </div>
 
       {/* Big number */}
-      <div className="flex items-baseline gap-1">
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem' }}>
         <span
-          className="text-3xl font-semibold leading-none text-ink"
-          style={{ fontFamily: "'Sora', 'Inter', sans-serif" }}
+          style={{
+            fontSize: '1.75rem',
+            fontWeight: 600,
+            lineHeight: 1,
+            fontFamily: "'Sora', 'Inter', sans-serif",
+            color: '#F0F2F5',
+          }}
         >
           {value}
         </span>
-        <span className="text-sm text-gray-400">{config.unit}</span>
+        <span style={{ fontSize: '0.8rem', color: '#6B7280' }}>{config.unit}</span>
       </div>
     </div>
   )
@@ -76,7 +103,7 @@ export default function TelemetryStrip() {
   const result = useStore((s) => s.result)
 
   return (
-    <div className="flex flex-wrap gap-3">
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
       {CHIPS.map((cfg) => (
         <Chip key={cfg.key} config={cfg} sample={sample} result={result} />
       ))}

@@ -64,12 +64,15 @@ export default function DigitalVsPhysical() {
   }, [response])
 
   return (
-    <div className="rounded-3xl overflow-hidden shadow-xl" style={{ background: '#101114' }}>
+    <div className="w-full max-w-full overflow-hidden" style={{ background: 'transparent' }}>
       {/* ── Top split row ── */}
-      <div className="grid grid-cols-2 divide-x" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+      <div className="grid grid-cols-2 w-full">
 
         {/* LEFT — Digital */}
-        <div className="flex flex-col items-center justify-center gap-3 px-8 py-10">
+        <div
+          className="flex flex-col items-center justify-center gap-3 px-6 sm:px-8 py-8 sm:py-10"
+          style={{ borderRight: '1px solid rgba(255,255,255,0.10)' }}
+        >
           <p className="text-xs font-medium uppercase tracking-widest text-gray-500">
             Digital
           </p>
@@ -90,10 +93,11 @@ export default function DigitalVsPhysical() {
 
         {/* RIGHT — Physics (pulses on change) */}
         <div
-          className="flex flex-col items-center justify-center gap-3 px-8 py-10 transition-colors duration-500"
+          className="flex flex-col items-center justify-center gap-3 px-6 sm:px-8 py-8 sm:py-10 transition-colors duration-500"
           style={{
             background: pulse ? physics.bg : 'transparent',
             animation: pulse ? 'physicsPulse 0.6s ease-out' : 'none',
+            borderRight: 'none',
           }}
         >
           <p className="text-xs font-medium uppercase tracking-widest text-gray-500">
@@ -127,9 +131,9 @@ export default function DigitalVsPhysical() {
 
       {/* ── Gauge + WHY row ── */}
       <div
-        className="border-t px-8 py-8 grid gap-8"
+        className="px-6 sm:px-8 py-8 grid gap-8 w-full max-w-full"
         style={{
-          borderColor: 'rgba(255,255,255,0.08)',
+          borderTop: '1px solid rgba(255,255,255,0.10)',
           gridTemplateColumns: 'auto 1fr',
         }}
       >

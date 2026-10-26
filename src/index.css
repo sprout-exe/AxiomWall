@@ -1,18 +1,66 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --color-canvas: #E9EAEE;
-  --color-ink: #101114;
-  --color-lime: #C8F03C;
-  --color-twin: #A78BFA;
-  --color-allow: #22C55E;
-  --color-warn: #F59E0B;
-  --color-limit: #F97316;
-  --color-block: #EF4444;
+  --color-canvas:  #070B12;
+  --color-ink:     #F0F2F5;
+  --color-lime:    #C8F03C;
+  --color-twin:    #A78BFA;
+  --color-allow:   #22C55E;
+  --color-warn:    #F59E0B;
+  --color-limit:   #F97316;
+  --color-block:   #EF4444;
+}
+
+/* ── Global resets ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 body {
-  background: var(--color-canvas);
-  font-family: Inter, sans-serif;
+  background: #070B12;
+  font-family: 'Inter', sans-serif;
   margin: 0;
+  color: #E5E7EB;
+  overflow-x: hidden;
 }
+
+/* ── Glass card mixin (used as data attribute for easy targeting) ─────────── */
+[data-glass] {
+  background: rgba(10, 14, 24, 0.72);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* ── Floating orb keyframes ────────────────────────────────────────────────── */
+@keyframes orbFloat1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(30px, -40px) scale(1.08); }
+  66%       { transform: translate(-20px, 20px) scale(0.94); }
+}
+@keyframes orbFloat2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  40%       { transform: translate(-35px, 25px) scale(1.1); }
+  75%       { transform: translate(20px, -30px) scale(0.92); }
+}
+@keyframes orbFloat3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%       { transform: translate(25px, 35px) scale(1.06); }
+}
+
+/* ── Physics pulse ─────────────────────────────────────────────────────────── */
+@keyframes physicsPulse {
+  0%   { opacity: 1; }
+  30%  { opacity: 0.5; }
+  60%  { opacity: 0.9; }
+  100% { opacity: 1; }
+}
+
+/* ── Scrollbar (webkit) ────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }

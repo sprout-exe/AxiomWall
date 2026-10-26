@@ -1,112 +1,311 @@
 // src/components/RiskGauge.jsx
-// Semi-circle gauge with four coloured arcs and a needle.
+// Speedometer-style dial gauge with dark dial face, 220° 4-segment arc,
+// major/minor tick marks, scale numbers, tapered needle with hub, and glowing readout.
 
 import { useMemo } from 'react'
 
 const SEGMENTS = [
-  { id: 'allow', color: '#22C55E', from:   0, to:  25 },
-  { id: 'warn',  color: '#F59E0B', from:  25, to:  50 },
-  { id: 'limit', color: '#F97316', from:  50, to:  75 },
-  { id: 'block', color: '#EF4444', from:  75, to: 100 },
+  { id: 'allow', color: '#22C55E', from: 0,   to: 25,  startDeg: 161.25, endDeg: 213.75 },
+  { id: 'warn',  color: '#F59E0B', from: 25,  to: 50,  startDeg: 216.25, endDeg: 268.75 },
+  { id: 'limit', color: '#F97316', from: 50,  to: 75,  startDeg: 271.25, endDeg: 323.75 },
+  { id: 'block', color: '#EF4444', from: 75,  to: 100, startDeg: 326.25, endDeg: 378.75 },
 ]
 
-const RESPONSE_LABEL = {
-  ALLOW: { label: 'ALLOW',     color: '#22C55E' },
-  WARN:  { label: 'SUSPICIOUS',color: '#F59E0B' },
-  LIMIT: { label: 'IMPLAUSIBLE', color: '#F97316' },
-  BLOCK: { label: 'BLOCKED',   color: '#EF4444' },
+const RESPONSE_MAP = {
+  ALLOW: { label: 'ALLOW', color: '#22C55E' },
+  WARN:  { label: 'WARN',  color: '#F59E0B' },
+  LIMIT: { label: 'LIMIT', color: '#F97316' },
+  BLOCK: { label: 'BLOCK', color: '#EF4444' },
 }
 
-const W = 260, H = 150, CX = W / 2, CY = 135, R_OUT = 120, R_IN = 80, GAP = 2
+const W = 280
+const H = 252
+const CX = W / 2      // 140
+const CY = 125
+const R_BEZEL = 118
+const R_ARC = 92
 
-/** Convert a risk value (0–100) to an angle in radians.
- *  0 → left  (π),  100 → right  (0),  mid → top (π/2).
- */
-function riskToAngle(risk) {
-  // Maps 0 → 180° → π  and  100 → 0° → 0
-  return Math.PI - (risk / 100) * Math.PI
-}
-
-/** Polar → Cartesian given a centre (cx, cy), radius, and angle from +x axis. */
-function polar(cx, cy, r, angleRad) {
-  return [cx + r * Math.cos(angleRad), cy - r * Math.sin(angleRad)]
-}
-
-/** Build an SVG arc path for a donut segment. */
-function arcPath(cx, cy, rOut, rIn, startDeg, endDeg, gapDeg = GAP) {
-  const s = ((startDeg + gapDeg / 2) / 100) * Math.PI
-  const e = ((endDeg   - gapDeg / 2) / 100) * Math.PI
-  const aS = Math.PI - s
-  const aE = Math.PI - e
-
-  const [ox1, oy1] = polar(cx, cy, rOut, aS)
-  const [ox2, oy2] = polar(cx, cy, rOut, aE)
-  const [ix1, iy1] = polar(cx, cy, rIn,  aE)
-  const [ix2, iy2] = polar(cx, cy, rIn,  aS)
-
-  const large = (endDeg - startDeg) > 50 ? 1 : 0
-
-  return [
-    `M ${ox1.toFixed(2)} ${oy1.toFixed(2)}`,
-    `A ${rOut} ${rOut} 0 ${large} 0 ${ox2.toFixed(2)} ${oy2.toFixed(2)}`,
-    `L ${ix1.toFixed(2)} ${iy1.toFixed(2)}`,
-    `A ${rIn} ${rIn} 0 ${large} 1 ${ix2.toFixed(2)} ${iy2.toFixed(2)}`,
-    'Z',
-  ].join(' ')
+/** Build SVG path for an arc from startAngleDeg to endAngleDeg at radius r */
+function describeArc(cx, cy, r, startAngleDeg, endAngleDeg) {
+  const startRad = (startAngleDeg * Math.PI) / 180
+  const endRad = (endAngleDeg * Math.PI) / 180
+  const x1 = cx + r * Math.cos(startRad)
+  const y1 = cy + r * Math.sin(startRad)
+  const x2 = cx + r * Math.cos(endRad)
+  const y2 = cy + r * Math.sin(endRad)
+  const largeArc = endAngleDeg - startAngleDeg > 180 ? 1 : 0
+  return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${largeArc} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`
 }
 
 export default function RiskGauge({ risk = 0, response = 'ALLOW' }) {
-  const needleAngle = riskToAngle(risk)
+  const clampedRisk = Math.max(0, Math.min(100, risk))
 
-  const { label, color } = RESPONSE_LABEL[response] ?? RESPONSE_LABEL.ALLOW
+  // Map risk to needle rotation angle:
+  // Sweep is 220° centered at 12 o'clock (-90° / 270°).
+  // At risk=0, angle is -110° relative to 12 o'clock (points to 160°).
+  // At risk=50, angle is 0° (points to 270° / straight up).
+  // At risk=100, angle is +110° (points to 380° / 20°).
+  const needleRotationDeg = -110 + (clampedRisk / 100) * 220
 
-  const needleTip = useMemo(() => polar(CX, CY, R_OUT - 8, needleAngle), [needleAngle])
-  const needleL   = useMemo(() => polar(CX, CY, R_IN  + 6, needleAngle + 0.18), [needleAngle])
-  const needleR   = useMemo(() => polar(CX, CY, R_IN  + 6, needleAngle - 0.18), [needleAngle])
+  // Active segment index (0..3)
+  const activeSegIndex = Math.min(3, Math.floor(clampedRisk / 25))
+
+  // Normalized response details
+  const respKey = (response ?? 'ALLOW').toUpperCase()
+  const { label: respLabel, color: respColor } = RESPONSE_MAP[respKey] ?? { label: respKey, color: '#22C55E' }
+
+  // Generate tick marks (values 0, 5, 10, ... 100)
+  const ticks = useMemo(() => {
+    const list = []
+    for (let v = 0; v <= 100; v += 5) {
+      const deg = 160 + (v / 100) * 220
+      const rad = (deg * Math.PI) / 180
+      const isMajor = v % 25 === 0
+      const rInner = isMajor ? 101 : 102
+      const rOuter = isMajor ? 108 : 106
+      const x1 = CX + rInner * Math.cos(rad)
+      const y1 = CY + rInner * Math.sin(rad)
+      const x2 = CX + rOuter * Math.cos(rad)
+      const y2 = CY + rOuter * Math.sin(rad)
+
+      let numPos = null
+      if (isMajor) {
+        const rNum = 117
+        numPos = {
+          x: CX + rNum * Math.cos(rad),
+          y: CY + rNum * Math.sin(rad),
+          val: v,
+        }
+      }
+
+      list.push({ val: v, isMajor, x1, y1, x2, y2, numPos })
+    }
+    return list
+  }, [])
 
   return (
-    <div className="flex flex-col items-center gap-1 select-none">
-      <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} aria-label={`Risk gauge: ${risk}, ${response}`}>
-        {/* Arcs */}
-        {SEGMENTS.map((seg) => (
-          <path
-            key={seg.id}
-            d={arcPath(CX, CY, R_OUT, R_IN, seg.from, seg.to)}
-            fill={seg.color}
-            opacity={response.toLowerCase() === seg.id ? 1 : 0.35}
+    <div className="flex flex-col items-center select-none">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        width={W}
+        height={H}
+        aria-label={`Risk gauge: ${risk}, ${response}`}
+        style={{ display: 'block' }}
+      >
+        <defs>
+          {/* Radial gradient: #05070B centre to #0B0F17 edge */}
+          <radialGradient id="dialFaceGrad" cx="50%" cy="48%" r="52%">
+            <stop offset="0%" stopColor="#05070B" />
+            <stop offset="100%" stopColor="#0B0F17" />
+          </radialGradient>
+
+          {/* Glow filters for segments */}
+          <filter id="glowSubtle" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="2" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+          <filter id="glowActive" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+
+        {/* ── Dark dial face + rounded bezel with thin white/10 ring ── */}
+        <circle
+          cx={CX}
+          cy={CY}
+          r={R_BEZEL}
+          fill="url(#dialFaceGrad)"
+          stroke="rgba(255, 255, 255, 0.10)"
+          strokeWidth="1"
+        />
+
+        {/* Faint inner shadow */}
+        <circle
+          cx={CX}
+          cy={CY}
+          r={R_BEZEL - 1.5}
+          fill="none"
+          stroke="rgba(0, 0, 0, 0.55)"
+          strokeWidth="3"
+        />
+
+        {/* ── Four arc segments (220° sweep) ── */}
+        {SEGMENTS.map((seg, idx) => {
+          const isActive = idx === activeSegIndex
+          const pathD = describeArc(CX, CY, R_ARC, seg.startDeg, seg.endDeg)
+
+          return (
+            <g key={seg.id}>
+              {/* Outer glow pass */}
+              <path
+                d={pathD}
+                fill="none"
+                stroke={seg.color}
+                strokeWidth={isActive ? 11 : 9}
+                strokeLinecap="round"
+                opacity={isActive ? 0.45 : 0.18}
+                filter={isActive ? 'url(#glowActive)' : 'url(#glowSubtle)'}
+              />
+              {/* Crisp foreground arc */}
+              <path
+                d={pathD}
+                fill="none"
+                stroke={seg.color}
+                strokeWidth={isActive ? 8 : 7}
+                strokeLinecap="round"
+                opacity={isActive ? 1.0 : 0.45}
+              />
+            </g>
+          )
+        })}
+
+        {/* ── Tick marks ── */}
+        {ticks.map((t) => (
+          <line
+            key={`tick-${t.val}`}
+            x1={t.x1.toFixed(2)}
+            y1={t.y1.toFixed(2)}
+            x2={t.x2.toFixed(2)}
+            y2={t.y2.toFixed(2)}
+            stroke={t.isMajor ? 'rgba(255, 255, 255, 0.75)' : 'rgba(255, 255, 255, 0.28)'}
+            strokeWidth={t.isMajor ? 1.8 : 1.0}
+            strokeLinecap="round"
           />
         ))}
 
-        {/* Needle */}
-        <polygon
-          points={`${needleTip[0].toFixed(2)},${needleTip[1].toFixed(2)} ${needleL[0].toFixed(2)},${needleL[1].toFixed(2)} ${needleR[0].toFixed(2)},${needleR[1].toFixed(2)}`}
-          fill="white"
-          opacity={0.95}
-        />
-        {/* Pivot */}
-        <circle cx={CX} cy={CY} r={7} fill="white" opacity={0.9} />
+        {/* ── Scale numbers around the arc in glowing white (Sora font) ── */}
+        {ticks.map(
+          (t) =>
+            t.numPos && (
+              <text
+                key={`num-${t.val}`}
+                x={t.numPos.x.toFixed(2)}
+                y={t.numPos.y.toFixed(2)}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fill="#FFFFFF"
+                fontSize="10"
+                fontWeight="700"
+                fontFamily="'Sora', sans-serif"
+                style={{
+                  filter: 'drop-shadow(0 0 3px rgba(255, 255, 255, 0.85))',
+                  textShadow: '0 0 6px rgba(255, 255, 255, 0.85)',
+                }}
+              >
+                {t.val}
+              </text>
+            )
+        )}
 
-        {/* Risk number */}
-        <text
-          x={CX} y={CY - R_IN + 12}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fill="white"
-          fontSize={28}
-          fontWeight={700}
-          fontFamily="'Sora', 'Inter', sans-serif"
+        {/* ── Needle (thin tapered needle starting at pivot, reaching the arc) ── */}
+        <g
+          className="gauge-needle"
+          style={{
+            transform: `rotate(${needleRotationDeg.toFixed(2)}deg)`,
+            transformOrigin: `${CX}px ${CY}px`,
+            transition: 'transform 600ms cubic-bezier(0.16, 1, 0.3, 1)',
+          }}
         >
-          {risk}
+          {/* Tapered needle pointing straight up towards CY - R_ARC */}
+          <path
+            d={`M ${CX - 1.8} ${CY} L ${CX - 0.4} ${CY - R_ARC} L ${CX + 0.4} ${CY - R_ARC} L ${CX + 1.8} ${CY} L ${CX + 0.6} ${CY + 5} L ${CX - 0.6} ${CY + 5} Z`}
+            fill="#FFFFFF"
+            style={{
+              filter: 'drop-shadow(0 0 3px rgba(255, 255, 255, 0.75))',
+            }}
+          />
+        </g>
+
+        {/* ── Round hub at the pivot with a glowing white centre dot ── */}
+        <circle
+          cx={CX}
+          cy={CY}
+          r={10}
+          fill="#0B0F17"
+          stroke="rgba(255, 255, 255, 0.22)"
+          strokeWidth="1.5"
+        />
+        <circle
+          cx={CX}
+          cy={CY}
+          r={6}
+          fill="#141923"
+        />
+        <circle
+          cx={CX}
+          cy={CY}
+          r={3}
+          fill="#FFFFFF"
+          style={{
+            filter: 'drop-shadow(0 0 5px rgba(255, 255, 255, 0.95))',
+          }}
+        />
+
+        {/* ── Big risk number in glowing white just below the hub ── */}
+        <text
+          x={CX}
+          y={162}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill="#FFFFFF"
+          fontSize={34}
+          fontWeight={800}
+          fontFamily="'Sora', sans-serif"
+          style={{
+            filter: 'drop-shadow(0 0 6px rgba(255, 255, 255, 0.6))',
+            textShadow: '0 0 14px rgba(255, 255, 255, 0.7)',
+          }}
+        >
+          {Math.round(risk)}
+        </text>
+
+        {/* ── "RISK" in small caps under the number ── */}
+        <text
+          x={CX}
+          y={184}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill="#9CA3AF"
+          fontSize={9}
+          fontWeight={700}
+          fontFamily="'Sora', sans-serif"
+          letterSpacing="0.18em"
+        >
+          RISK
+        </text>
+
+        {/* ── Response label (ALLOW / WARN / LIMIT / BLOCK) coloured by state with a soft glow ── */}
+        <text
+          x={CX}
+          y={206}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill={respColor}
+          fontSize={13}
+          fontWeight={800}
+          fontFamily="'Sora', sans-serif"
+          letterSpacing="0.14em"
+          style={{
+            filter: `drop-shadow(0 0 5px ${respColor}aa)`,
+            textShadow: `0 0 10px ${respColor}`,
+          }}
+        >
+          {respLabel}
         </text>
       </svg>
 
-      {/* Response label below */}
-      <span
-        className="text-sm font-bold tracking-widest uppercase"
-        style={{ color }}
-      >
-        {label}
-      </span>
+      {/* Motion preference style (no continuous pulsing, transition disabled under reduced-motion) */}
+      <style>{`
+        @media (prefers-reduced-motion: reduce) {
+          .gauge-needle {
+            transition: none !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }

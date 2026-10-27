@@ -33,6 +33,8 @@ import BackgroundScene     from './components/BackgroundScene.jsx'
 import LoadingScreen       from './components/LoadingScreen.jsx'
 import FallingCars         from './components/FallingCars.jsx'
 import useDigital          from './security/useDigital.js'
+import { DemoButton, DemoCaptionBar, DemoSummaryModal } from './components/DemoMode.jsx'
+import { useDemo }        from './demo/useDemo.js'
 
 const PROFILES = [
   { id: 'idle',           label: 'Idle' },
@@ -209,6 +211,8 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [incidents, setIncidents] = useState([])
 
+  const demo = useDemo()
+
   useEffect(() => { start() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleMode(id) {
@@ -222,6 +226,17 @@ export default function App() {
     <>
       {/* ── Loading Screen ── */}
       {loading && <LoadingScreen onComplete={() => setLoading(false)} />}
+
+      {/* ── Demo caption bar (fixed, top-centre) ── */}
+      <DemoCaptionBar demo={demo} />
+
+      {/* ── Demo summary modal ── */}
+      <DemoSummaryModal
+        show={demo.showSummary}
+        runStats={demo.runStats}
+        onClose={demo.closeSummary}
+        onRunAgain={() => { demo.closeSummary(); demo.startDemo() }}
+      />
 
       {/* ── Fixed background ── */}
       <BackgroundScene />
@@ -279,29 +294,37 @@ export default function App() {
                 </p>
               </div>
 
-            {/* Running indicator */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                flexShrink: 0,
-                background: 'rgba(5,7,11,0.65)',
-                padding: '0.4rem 0.85rem',
-                borderRadius: '9999px',
-                border: '1px solid rgba(255,255,255,0.15)',
-                backdropFilter: 'blur(8px)',
-              }}
-            >
-              <span style={{
-                width: '9px', height: '9px', borderRadius: '50%',
-                background: running ? '#76FF03' : '#94A3B8',
-                boxShadow: running ? '0 0 10px #76FF03' : 'none',
-                transition: 'background 0.3s, box-shadow 0.3s',
-              }} />
-              <span style={{ fontSize: '0.82rem', fontWeight: 600, color: running ? '#F1F5F9' : '#94A3B8' }}>
-                {running ? 'Streaming' : 'Stopped'}
-              </span>
+            {/* Right-side header controls */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0, flexWrap: 'wrap' }}>
+              {/* Demo button */}
+              <DemoButton
+                isRunning={demo.isRunning}
+                onStart={demo.isRunning ? demo.stopDemo : demo.startDemo}
+              />
+
+              {/* Running indicator */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  background: 'rgba(5,7,11,0.65)',
+                  padding: '0.4rem 0.85rem',
+                  borderRadius: '9999px',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  backdropFilter: 'blur(8px)',
+                }}
+              >
+                <span style={{
+                  width: '9px', height: '9px', borderRadius: '50%',
+                  background: running ? '#76FF03' : '#94A3B8',
+                  boxShadow: running ? '0 0 10px #76FF03' : 'none',
+                  transition: 'background 0.3s, box-shadow 0.3s',
+                }} />
+                <span style={{ fontSize: '0.82rem', fontWeight: 600, color: running ? '#F1F5F9' : '#94A3B8' }}>
+                  {running ? 'Streaming' : 'Stopped'}
+                </span>
+              </div>
             </div>
           </header>
 

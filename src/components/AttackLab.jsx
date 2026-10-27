@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import useStore from '../store/useStore.js'
+import { demoBus } from '../demo/bus.js'
 
 const ATTACKS = [
   {
@@ -193,8 +194,9 @@ const ATTACKS = [
 ];
 
 export default function AttackLab({ onActiveChange }) {
-  const [activeId,  setActiveId]  = useState(null);
-  const [intensity, setIntensity] = useState(0.75);
+  const [activeId,   setActiveId]   = useState(null);
+  const [intensity,  setIntensity]  = useState(0.75);
+  const [demoActive, setDemoActive] = useState(false);
 
   const setAttackTransform  = useStore((s) => s.setAttackTransform);
   const setMode             = useStore((s) => s.setMode);
@@ -209,6 +211,24 @@ export default function AttackLab({ onActiveChange }) {
   useEffect(() => {
     if (onActiveChange) onActiveChange(activeId);
   }, [activeId, onActiveChange]);
+
+  useEffect(() => {
+    const unsubStart = demoBus.on('START_ATTACK', (attackId) => {
+      const att = ATTACKS.find((a) => a.id === attackId);
+      if (att) activateAttack(att);
+    });
+    const unsubStop = demoBus.on('STOP_ATTACK', () => {
+      stopAttack();
+    });
+    const unsubActive = demoBus.on('DEMO_ACTIVE', (active) => {
+      setDemoActive(Boolean(active));
+    });
+    return () => {
+      unsubStart();
+      unsubStop();
+      unsubActive();
+    };
+  }, [activeId, modeFromStore, running]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function activateAttack(attack) {
     if (!running) start();
@@ -372,6 +392,14 @@ export default function AttackLab({ onActiveChange }) {
         )}
       </div>
 
+      {/* Demo in progress note */}
+      {demoActive && (
+        <div className="w-full mb-3 px-3 py-1.5 rounded-lg bg-cyan-950/80 border border-cyan-400/50 text-cyan-300 text-xs font-mono flex items-center gap-2 relative z-10 shadow-sm">
+          <span className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
+          <span>Demo in progress (manual attack triggers locked)</span>
+        </div>
+      )}
+
       {/* ── Intensity slider ── */}
       {activeId && ATTACKS.find(a => a.id === activeId)?.hasIntensity && (
         <div className="pb-4 flex items-center gap-4 bg-slate-50/90 p-3 rounded-xl border border-slate-200 mb-3 relative z-10 shadow-sm">
@@ -391,7 +419,7 @@ export default function AttackLab({ onActiveChange }) {
         </div>
       )}
 
-      {/* ── The 7 Attack Buttons in Orbitron font ── */}
+      {/* ── Attack Buttons in Orbitron font ── */}
       <div
         className="grid gap-3 relative z-10"
         style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}
@@ -402,7 +430,10 @@ export default function AttackLab({ onActiveChange }) {
             <button
               key={attack.id}
               type="button"
-              onClick={() => activateAttack(attack)}
+              onClick={() => {
+                if (demoActive) return;
+                activateAttack(attack);
+              }}
               className={[
                 'rounded-2xl p-4 text-left transition-all duration-200 cursor-pointer',
                 isActive ? 'attack-btn-active' : 'attack-btn-idle',

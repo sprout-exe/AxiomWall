@@ -19,10 +19,6 @@ Built for **VIT Sustainathon** · Sustainable AI & Cybersecurity track · **PS A
 <!-- TODO: add the deployed link once available, e.g. [🚀 Live Demo](https://your-app.vercel.app) · -->
 [🎬 Demo Walkthrough](#-demo-walkthrough-2-minutes) · [🔌 Hardware (Wokwi)](#-hardware-in-the-loop-wokwi-esp32) · [📊 Detection Results](#-detection-results) · [👥 Team](#-team)
 
-<img src="docs/dashboard-attack.png" alt="AxiomWall detecting a temperature-freeze attack: Digital VALID, Physics IMPLAUSIBLE, risk 70, response LIMIT" width="900">
-
-<sub>A temperature-freeze attack in progress. The message is signed and valid, yet the physics is impossible.</sub>
-
 </div>
 
 ---

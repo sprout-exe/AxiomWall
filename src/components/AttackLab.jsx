@@ -1,4 +1,4 @@
-﻿// src/components/AttackLab.jsx
+// src/components/AttackLab.jsx
 // Attack Lab — toggle-based panel for 7 named attacks.
 // Font Orbitron for attack buttons with icons and neon gradient borders.
 // Electricity glitch effect, circuit-grid pattern, roaming cyber-bugs,
@@ -161,6 +161,33 @@ const ATTACKS = [
     ),
     build() {
       return null;
+    },
+  },
+  {
+    id: 'forged_packet',
+    label: 'Forged Packet (no valid key)',
+    desc: 'Tampers reported voltage (+25 V) after signing without a valid HMAC key. Signature verification fails immediately.',
+    note: 'Layer 1 catches this. The other attacks pass layer 1; only physics catches those.',
+    hasIntensity: false,
+    mode: 'drive',
+    injectedSignals: ['V'],
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      </svg>
+    ),
+    build() {
+      return (sample) => ({
+        sample,
+        tamperAfterSign: (packet) => ({
+          ...packet,
+          fields: {
+            ...packet.fields,
+            V: (packet.fields?.V ?? 380) + 25.0,
+          },
+        }),
+      });
     },
   },
 ];
@@ -421,6 +448,11 @@ export default function AttackLab({ onActiveChange }) {
                   <p className="mt-1.5 text-xs text-slate-600 leading-relaxed m-0 font-sans font-medium">
                     {attack.desc}
                   </p>
+                  {attack.note && (
+                    <p className="mt-1.5 text-[11px] text-amber-800 bg-amber-50/90 px-2 py-1 rounded-md border border-amber-200 leading-normal font-sans font-semibold">
+                      {attack.note}
+                    </p>
+                  )}
                 </div>
               </div>
             </button>

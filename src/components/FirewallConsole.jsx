@@ -6,6 +6,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import useStore from '../store/useStore.js'
+import useDigital from '../security/useDigital.js'
 
 const MAX_LINES = 80
 
@@ -41,6 +42,12 @@ export default function FirewallConsole() {
   useEffect(() => {
     if (!result || !sample) return
 
+    const digitalState = useDigital.getState()
+    const isAuthFailed = result?.reasons?.[0]?.rule === 'auth_failed' || !digitalState.valid
+    const authValid    = !isAuthFailed
+    const authReason   = isAuthFailed ? (digitalState.reason || 'bad_signature') : 'ok'
+    const authSig      = digitalState.lastSigShort
+
     const { response, reasons } = result
     const color = VERDICT_COLOR[response] ?? '#aaa'
     const tag   = VERDICT_TAG[response]   ?? response
@@ -62,14 +69,18 @@ export default function FirewallConsole() {
       : null
 
     const line = {
-      id:       Date.now() + Math.random(),
-      t:        `t=${sample.t ?? 0}`,
-      physics:  physicsStr,
-      node:     nodeStr,
-      impact:   impactStr,
-      verdict:  tag,
+      id:           Date.now() + Math.random(),
+      t:            `t=${sample.t ?? 0}`,
+      authValid,
+      authReason,
+      authSig,
+      physics:      isAuthFailed ? null : physicsStr,
+      node:         nodeStr,
+      impact:       impactStr,
+      verdict:      tag,
       color,
-      isAllow:  response === 'ALLOW',
+      isAllow:      response === 'ALLOW',
+      isAuthFailed,
     }
 
     setLines((prev) => {
@@ -240,37 +251,54 @@ export default function FirewallConsole() {
                 {/* timestamp */}
                 <span style={{ color: '#6B7280', minWidth: '48px', fontSize: '10px' }}>{ln.t}</span>
 
-                {/* auth chain */}
-                <span style={{ color: '#38BDF8' }}>[Auth PASSED]</span>
-                <span style={{ color: '#4B5563' }}>-&gt;</span>
-
-                {/* physics verdict */}
-                <span style={{ color: ln.isAllow ? '#4ADE80' : '#F59E0B', wordBreak: 'break-all' }}>
-                  {ln.physics}
-                </span>
-
-                {/* localization node if present */}
-                {ln.node && (
+                {/* If auth failed: [Auth FAILED: bad_signature] -> [BLOCKED] */}
+                {ln.isAuthFailed ? (
                   <>
+                    <span style={{ color: '#EF4444', fontWeight: 700 }}>
+                      [Auth FAILED: {ln.authReason}]
+                    </span>
                     <span style={{ color: '#4B5563' }}>-&gt;</span>
-                    <span style={{ color: '#C084FC', fontWeight: 600 }}>{ln.node}</span>
+                    <span style={{ color: '#EF4444', fontWeight: 700 }}>
+                      [BLOCKED]
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    {/* auth passed with signature segment */}
+                    <span style={{ color: '#38BDF8' }}>
+                      [Auth PASSED: HMAC-SHA256 sig={ln.authSig}]
+                    </span>
+                    <span style={{ color: '#4B5563' }}>-&gt;</span>
+
+                    {/* physics verdict */}
+                    <span style={{ color: ln.isAllow ? '#4ADE80' : '#F59E0B', wordBreak: 'break-all' }}>
+                      {ln.physics}
+                    </span>
+
+                    {/* localization node if present */}
+                    {ln.node && (
+                      <>
+                        <span style={{ color: '#4B5563' }}>-&gt;</span>
+                        <span style={{ color: '#C084FC', fontWeight: 600 }}>{ln.node}</span>
+                      </>
+                    )}
+
+                    {/* impact consequence if present */}
+                    {ln.impact && (
+                      <>
+                        <span style={{ color: '#4B5563' }}>-&gt;</span>
+                        <span style={{ color: '#FCA5A5', fontSize: '10px' }}>{ln.impact}</span>
+                      </>
+                    )}
+
+                    <span style={{ color: '#4B5563' }}>-&gt;</span>
+
+                    {/* firewall decision */}
+                    <span style={{ color: ln.color, fontWeight: 700 }}>
+                      [{ln.verdict}]
+                    </span>
                   </>
                 )}
-
-                {/* impact consequence if present */}
-                {ln.impact && (
-                  <>
-                    <span style={{ color: '#4B5563' }}>-&gt;</span>
-                    <span style={{ color: '#FCA5A5', fontSize: '10px' }}>{ln.impact}</span>
-                  </>
-                )}
-
-                <span style={{ color: '#4B5563' }}>-&gt;</span>
-
-                {/* firewall decision */}
-                <span style={{ color: ln.color, fontWeight: 700 }}>
-                  [{ln.verdict}]
-                </span>
               </div>
             ))}
           </div>

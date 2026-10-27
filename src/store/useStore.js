@@ -1,4 +1,4 @@
-﻿// src/store/useStore.js
+// src/store/useStore.js
 // Zustand store: sample ring-buffer (120 s), twin state, mode, running flag,
 // detection result, stress accumulation, and attack-lab injection.
 
@@ -8,6 +8,8 @@ import { stepTwin } from '../engine/twin.js'
 import { evaluate } from '../engine/index.js'
 import { resetRisk } from '../engine/risk.js'
 import { connectWokwi, DEFAULT_TOPIC } from '../sim/wokwiLink.js'
+import { signSample, verifySamplePacket } from '../security/signing.js'
+import useDigital from '../security/useDigital.js'
 
 const MAX_HISTORY = 120;
 
@@ -43,11 +45,46 @@ const useStore = create((set, get) => ({
 
     let sample = { ...rawSample };
     let cmd = _command;
+    let tamperAfterSign = null;
 
     if (_attackTransform) {
       const out = _attackTransform(sample, state.history);
       sample = out.sample ?? sample;
       if (out.command !== undefined) cmd = out.command;
+      if (out.tamperAfterSign) tamperAfterSign = out.tamperAfterSign;
+    }
+
+    let packet = signSample(sample);
+    if (tamperAfterSign) {
+      packet = tamperAfterSign(packet);
+    }
+
+    const auth = verifySamplePacket(packet);
+    useDigital.getState().recordVerification({
+      valid: auth.valid,
+      reason: auth.reason,
+      sig: packet.sig,
+      seq: packet.seq,
+    });
+
+    if (!auth.valid) {
+      const syntheticResult = {
+        risk: 100,
+        response: 'BLOCK',
+        precheck: true,
+        reasons: [{
+          rule: 'auth_failed',
+          severity: 1,
+          text: `Packet signature invalid (${auth.reason}); rejected before physics.`,
+        }],
+        localization: { node: 'comms', confidence: 0.9, evidence: ['auth_failed'] },
+        impact: null,
+      };
+      set({
+        sample: { ...sample, digitalValid: false },
+        result: syntheticResult,
+      });
+      return;
     }
 
     // Advance twin using reported current
@@ -152,6 +189,7 @@ const useStore = create((set, get) => ({
     _command = null;
     _telemetryOverride = null;
     resetRisk();
+    useDigital.getState().reset();
     set({
       sample:          null,
       history:         [],

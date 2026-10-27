@@ -1,11 +1,27 @@
-﻿// src/components/DigitalVsPhysical.jsx
+// src/components/DigitalVsPhysical.jsx
 // Truth-Split hero panel.
 // Floating tiles with response-reactive neon glow borders.
 // Speedometer gauge with recovering status line, Cell Stress bar, and status pill.
 
 import { useRef, useEffect, useState } from 'react'
 import useStore from '../store/useStore.js'
+import useDigital from '../security/useDigital.js'
 import RiskGauge from './RiskGauge.jsx'
+
+function formatDigitalReason(reason) {
+  switch (reason) {
+    case 'bad_signature':
+      return 'Signature invalid (tampered or wrong key)'
+    case 'stale_timestamp':
+      return 'Stale timestamp (> 5 s clock skew)'
+    case 'replayed_nonce':
+      return 'Replayed nonce detected'
+    case 'bad_sequence':
+      return 'Sequence out of order'
+    default:
+      return reason || 'Signature verification failed'
+  }
+}
 
 const PHYSICS_STATE = {
   ALLOW: {
@@ -87,6 +103,11 @@ export default function DigitalVsPhysical() {
     }
   }, [response])
 
+  const digitalValid  = useDigital((s) => s.valid)
+  const digitalReason = useDigital((s) => s.reason)
+  const lastSeq       = useDigital((s) => s.lastSeq)
+  const lastSigShort  = useDigital((s) => s.lastSigShort)
+
   const isRecovering = instantRisk < risk
 
   return (
@@ -99,9 +120,13 @@ export default function DigitalVsPhysical() {
           className="digital-tile flex flex-col items-center justify-center gap-3 p-6 sm:p-7 rounded-2xl"
           style={{
             background: '#FFFFFF',
-            border: '1.5px solid rgba(200, 240, 60, 0.85)',
-            boxShadow: '0 0 18px rgba(200, 240, 60, 0.35), 0 8px 24px rgba(0,0,0,0.05)',
-            transition: 'transform 0.25s ease, box-shadow 0.25s ease',
+            border: digitalValid
+              ? '1.5px solid rgba(200, 240, 60, 0.85)'
+              : '1.5px solid #EF4444',
+            boxShadow: digitalValid
+              ? '0 0 18px rgba(200, 240, 60, 0.35), 0 8px 24px rgba(0,0,0,0.05)'
+              : '0 0 20px rgba(239, 68, 68, 0.45), 0 8px 24px rgba(0,0,0,0.05)',
+            transition: 'transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease',
           }}
         >
           <p
@@ -111,26 +136,41 @@ export default function DigitalVsPhysical() {
             Digital
           </p>
           <div
-            className="flex h-14 w-14 items-center justify-center rounded-2xl"
-            style={{ background: 'rgba(200,240,60,0.20)' }}
+            className="flex h-14 w-14 items-center justify-center rounded-2xl transition-colors duration-300"
+            style={{ background: digitalValid ? 'rgba(200,240,60,0.20)' : 'rgba(239,68,68,0.15)' }}
           >
-            <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="#65A30D" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
+            {digitalValid ? (
+              <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="#65A30D" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="#DC2626" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            )}
           </div>
           <p
-            className="text-2xl m-0"
+            className="text-2xl m-0 transition-colors duration-300"
             style={{
               fontFamily: "'Russo One', 'Teko', sans-serif",
-              color: '#4D7C0F',
+              color: digitalValid ? '#4D7C0F' : '#DC2626',
               letterSpacing: '0.04em',
             }}
           >
-            VALID
+            {digitalValid ? 'VALID' : 'INVALID'}
           </p>
-          <p className="text-center text-xs text-slate-500 max-w-[200px] m-0 leading-tight">
-            Signed & authenticated<br /><span className="text-slate-400">(simulated)</span>
-          </p>
+          {digitalValid ? (
+            <p className="text-center text-xs text-slate-600 max-w-[220px] m-0 leading-tight">
+              Signature verified (HMAC-SHA256), seq {lastSeq}, sig {lastSigShort}
+              <span className="block text-slate-400 text-[11px] mt-1 font-mono">Demo key, simulated device</span>
+            </p>
+          ) : (
+            <p className="text-center text-xs text-red-600 font-semibold max-w-[220px] m-0 leading-tight">
+              {formatDigitalReason(digitalReason)}
+              <span className="block text-slate-400 text-[11px] mt-1 font-normal font-mono">Demo key, simulated device</span>
+            </p>
+          )}
         </div>
 
         {/* RIGHT — Physics Floating Tile */}

@@ -32,6 +32,7 @@ import FirewallConsole     from './components/FirewallConsole.jsx'
 import BackgroundScene     from './components/BackgroundScene.jsx'
 import LoadingScreen       from './components/LoadingScreen.jsx'
 import FallingCars         from './components/FallingCars.jsx'
+import useDigital          from './security/useDigital.js'
 
 const PROFILES = [
   { id: 'idle',           label: 'Idle' },
@@ -48,6 +49,7 @@ const ATTACK_LABELS = {
   malicious_cmd: 'Malicious Command',
   discharge_off: 'DISCHARGE_OFF at Speed',
   legit_ramp:    'Legit Fast-Charge Ramp',
+  forged_packet: 'Forged Packet (no valid key)',
 }
 
 // ── Shared glossy white glass card style ──────────────────────────────────────
@@ -103,6 +105,50 @@ function DebugStrip() {
         <span style={{ color: '#64748B' }}>rules: </span>
         <span style={{ color: '#1E293B', fontWeight: 600 }}>{failingRules}</span>
       </span>
+    </div>
+  )
+}
+
+// ── Security chip (white glass) ───────────────────────────────────────────────
+function SecurityChip() {
+  const verified = useDigital((s) => s.packetsVerified)
+  const rejected = useDigital((s) => s.packetsRejected)
+  const valid    = useDigital((s) => s.valid)
+
+  return (
+    <div
+      style={{
+        ...WHITE_GLASS,
+        borderRadius: '0.85rem',
+        padding: '0.5rem 1.1rem',
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: '0.72rem',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '0.5rem 1.2rem',
+        color: '#475569',
+      }}
+    >
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700, color: valid ? '#15803D' : '#DC2626' }}>
+        <span style={{
+          width: '7px', height: '7px', borderRadius: '50%',
+          background: valid ? '#22C55E' : '#EF4444',
+          boxShadow: valid ? '0 0 6px #22C55E' : '0 0 8px #EF4444',
+        }} />
+        Digital Security (HMAC-SHA256)
+      </span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+        <span>
+          <span style={{ color: '#64748B' }}>verified: </span>
+          <span style={{ color: '#16A34A', fontWeight: 700 }}>{verified}</span>
+        </span>
+        <span>
+          <span style={{ color: '#64748B' }}>rejected: </span>
+          <span style={{ color: rejected > 0 ? '#DC2626' : '#64748B', fontWeight: 700 }}>{rejected}</span>
+        </span>
+      </div>
     </div>
   )
 }
@@ -264,8 +310,9 @@ export default function App() {
             <DigitalVsPhysical />
           </GlassCard>
 
-          {/* ── Debug strip ── */}
+          {/* ── Debug strip & Security chip ── */}
           <DebugStrip />
+          <SecurityChip />
 
           {/* ── Data source: built-in simulator or live Wokwi ESP32 ── */}
           <GlassCard>
